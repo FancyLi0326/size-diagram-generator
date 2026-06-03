@@ -1,0 +1,2465 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>尺寸图生成器</title>
+    <style>
+      :root {
+        --ink: #1d1d1f;
+        --muted: #6e6e73;
+        --quiet: #86868b;
+        --line: #bfc2c6;
+        --line-soft: #d3d5d8;
+        --red: #ff614d;
+        --page-bg: #f5f5f7;
+        --surface: #ffffff;
+        --surface-soft: rgba(255, 255, 255, 0.86);
+        --separator: rgba(60, 60, 67, 0.16);
+        --control-bg: #f5f5f7;
+        --panel-border: rgba(60, 60, 67, 0.18);
+        --shadow: 0 10px 30px rgba(29, 29, 31, 0.06);
+        --sheet-ratio: 3 / 2;
+        --sheet-ratio-value: 1.5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-width: 100%;
+        min-height: 100%;
+        margin: 0;
+        overflow: auto;
+        background: var(--page-bg);
+        color: var(--ink);
+        padding: 24px;
+        font-family:
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Microsoft YaHei",
+          sans-serif;
+      }
+
+      .app {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        width: min(100%, 1480px);
+        min-height: calc(100vh - 48px);
+        margin: 0 auto;
+      }
+
+      .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 42px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .app-title {
+        margin: 0;
+        overflow: hidden;
+        color: #1d1d1f;
+        font-size: 26px;
+        font-weight: 660;
+        letter-spacing: 0;
+        line-height: 1.12;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .workspace {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr);
+        align-items: stretch;
+        gap: 16px;
+        min-height: 620px;
+      }
+
+      .preview-pane {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        min-width: 0;
+        height: 100%;
+        padding: 18px;
+        border: 1px solid var(--separator);
+        border-radius: 8px;
+        background: var(--surface);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      .drawing-sheet {
+        position: relative;
+        width: min(100%, calc((100vh - 150px) * var(--sheet-ratio-value)));
+        max-width: 1077px;
+        max-height: 100%;
+        aspect-ratio: var(--sheet-ratio);
+        background: #ffffff;
+        border: 1px solid #d8d8de;
+        border-radius: 4px;
+        cursor: grab;
+        overflow: hidden;
+        touch-action: none;
+      }
+
+      .drawing-sheet.is-dragging {
+        cursor: grabbing;
+      }
+
+      #scene {
+        display: block;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+      }
+
+      .variant-dock {
+        width: min(100%, 1077px);
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .variant-card {
+        position: relative;
+        min-width: 0;
+        aspect-ratio: var(--sheet-ratio);
+        border: 1px solid var(--separator);
+        border-radius: 6px;
+        background: #f7f8fa;
+        overflow: hidden;
+        cursor: pointer;
+      }
+
+      .variant-card.is-active {
+        border-color: var(--red);
+        box-shadow: 0 0 0 2px rgba(255, 97, 77, 0.16);
+      }
+
+      .variant-card img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .variant-empty {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #9a9ca2;
+        font-size: 28px;
+        font-weight: 680;
+      }
+
+      .variant-label {
+        position: absolute;
+        left: 6px;
+        bottom: 5px;
+        padding: 2px 5px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.86);
+        color: #6e6e73;
+        font-size: 10px;
+        line-height: 1.2;
+      }
+
+      .variant-save {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        height: 22px;
+        padding: 0 7px;
+        border: 1px solid rgba(60, 60, 67, 0.16);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #6e6e73;
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+      }
+
+      .variant-save:hover {
+        border-color: #b8b8bf;
+        color: #1d1d1f;
+      }
+
+      .variant-actions {
+        width: min(100%, 1077px);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .preview-toolbar {
+        width: min(100%, 1077px);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .ratio-tabs {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px;
+        border: 1px solid var(--panel-border);
+        border-radius: 7px;
+        background: var(--control-bg);
+      }
+
+      .ratio-tab {
+        min-width: 48px;
+        height: 28px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .ratio-tab.is-active {
+        background: #ffffff;
+        color: var(--ink);
+        box-shadow: 0 1px 3px rgba(29, 29, 31, 0.1);
+      }
+
+      .panel {
+        width: 340px;
+        height: 100%;
+        min-height: 0;
+        padding: 18px;
+        border: 1px solid var(--panel-border);
+        border-radius: 8px;
+        background: var(--surface-soft);
+        backdrop-filter: blur(18px);
+        box-shadow: var(--shadow);
+        overflow: auto;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .panel-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 670;
+        letter-spacing: 0;
+      }
+
+      .control-group {
+        padding: 14px 0;
+        border-top: 1px solid var(--separator);
+      }
+
+      .panel-header + .control-group {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .group-title {
+        margin-bottom: 10px;
+        color: var(--quiet);
+        font-size: 11px;
+        font-weight: 640;
+        letter-spacing: 0;
+      }
+
+      .subsection-title {
+        grid-column: 1 / -1;
+        margin: 8px 0 2px;
+        padding-top: 14px;
+        border-top: 1px solid var(--separator);
+        color: var(--quiet);
+        font-size: 11px;
+        font-weight: 640;
+        letter-spacing: 0;
+      }
+
+      .icon-button {
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--panel-border);
+        border-radius: 8px;
+        background: #ffffff;
+        color: #6e6e73;
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+        transition:
+          border-color 150ms ease,
+          color 150ms ease,
+          background 150ms ease;
+      }
+
+      .icon-button:hover {
+        border-color: #b8b8bf;
+        background: #f9f9fb;
+        color: #1d1d1f;
+      }
+
+      .button-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .text-button {
+        height: 32px;
+        border: 1px solid var(--panel-border);
+        border-radius: 7px;
+        background: #ffffff;
+        color: #1d1d1f;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        transition:
+          border-color 150ms ease,
+          background 150ms ease;
+      }
+
+      .text-button:hover {
+        border-color: #b8b8bf;
+        background: #f9f9fb;
+      }
+
+      .field {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr) 68px;
+        align-items: center;
+        gap: 12px;
+        min-height: 40px;
+      }
+
+      .field + .field {
+        margin-top: 8px;
+      }
+
+      .field.is-hidden {
+        display: none;
+      }
+
+      label {
+        font-size: 12px;
+        font-weight: 520;
+        color: var(--muted);
+      }
+
+      input[type="range"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 100%;
+        height: 24px;
+        margin: 0;
+        background: transparent;
+        accent-color: var(--red);
+      }
+
+      input[type="range"]::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 999px;
+        background: #d8d8de;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        margin-top: -7px;
+        border: 1px solid rgba(60, 60, 67, 0.22);
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.14),
+          0 4px 10px rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+      }
+
+      input[type="range"]::-moz-range-track {
+        height: 4px;
+        border: 0;
+        border-radius: 999px;
+        background: #d8d8de;
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border: 1px solid rgba(60, 60, 67, 0.22);
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.14),
+          0 4px 10px rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+      }
+
+      input[type="range"]:focus-visible::-webkit-slider-thumb {
+        box-shadow:
+          0 0 0 4px rgba(255, 97, 77, 0.16),
+          0 1px 2px rgba(0, 0, 0, 0.14);
+      }
+
+      input[type="number"] {
+        width: 66px;
+        height: 30px;
+        padding: 0 8px;
+        border: 1px solid var(--panel-border);
+        border-radius: 7px;
+        background: var(--control-bg);
+        color: #1d1d1f;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        outline: none;
+      }
+
+      input[type="number"]:focus {
+        border-color: #ff9a8d;
+        box-shadow: 0 0 0 3px rgba(255, 97, 77, 0.13);
+      }
+
+      input[type="checkbox"] {
+        grid-column: 2 / 4;
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: var(--red);
+        cursor: pointer;
+      }
+
+      select,
+      input[type="text"],
+      input[type="file"] {
+        grid-column: 2 / 4;
+        width: 100%;
+        height: 32px;
+        padding: 0 10px;
+        border: 1px solid var(--panel-border);
+        border-radius: 7px;
+        background: var(--control-bg);
+        color: #1d1d1f;
+        font: inherit;
+        font-size: 12px;
+        outline: none;
+      }
+
+      input[type="file"] {
+        padding-top: 6px;
+        color: var(--muted);
+      }
+
+      select {
+        padding-right: 30px;
+        background:
+          linear-gradient(45deg, transparent 50%, #8e8e93 50%) calc(100% - 16px) 13px / 5px 5px no-repeat,
+          linear-gradient(135deg, #8e8e93 50%, transparent 50%) calc(100% - 11px) 13px / 5px 5px no-repeat,
+          var(--control-bg);
+        appearance: none;
+        -webkit-appearance: none;
+      }
+
+      select:focus,
+      input[type="text"]:focus {
+        border-color: #ff9a8d;
+        box-shadow: 0 0 0 3px rgba(255, 97, 77, 0.13);
+      }
+
+      .color-panel {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e6e6eb;
+      }
+
+      .color-panel summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 32px;
+        color: var(--quiet);
+        font-size: 11px;
+        font-weight: 640;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .color-panel summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .color-panel summary::after {
+        content: "⌄";
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .color-panel[open] summary::after {
+        transform: rotate(180deg);
+      }
+
+      .color-field {
+        display: grid;
+        grid-template-columns: 86px 34px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+      }
+
+      .color-field + .color-field {
+        margin-top: 6px;
+      }
+
+      input[type="color"] {
+        width: 34px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--panel-border);
+        border-radius: 7px;
+        background: #ffffff;
+        cursor: pointer;
+      }
+
+      .color-field input[type="text"] {
+        grid-column: auto;
+        height: 30px;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        text-transform: uppercase;
+      }
+
+      .panel.collapsed {
+        align-self: start;
+        height: auto;
+        width: auto;
+        padding: 10px;
+      }
+
+      .panel.collapsed .panel-title,
+      .panel.collapsed .control-group,
+      .panel.collapsed .color-panel {
+        display: none;
+      }
+
+      @media (max-width: 960px) {
+        .app-header {
+          align-items: flex-start;
+        }
+
+        .workspace {
+          grid-template-columns: 1fr;
+          min-height: 0;
+        }
+
+        .panel {
+          position: static;
+          width: 100%;
+          height: auto;
+        }
+
+        .preview-pane {
+          min-height: 460px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 12px;
+        }
+
+        .app-title {
+          font-size: 23px;
+        }
+
+        .panel {
+          padding: 10px;
+        }
+
+        .field {
+          grid-template-columns: 76px 1fr 58px;
+        }
+
+        input[type="number"] {
+          width: 58px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <div class="brand">
+          <h1 class="app-title">尺寸图生成器</h1>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="panel" id="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">调整器</h2>
+            <button class="icon-button" id="togglePanel" type="button" title="收起/展开">⌁</button>
+          </div>
+
+          <div class="control-group">
+            <div class="group-title">体块</div>
+            <div class="field">
+              <label for="layoutModeSelect">布局</label>
+              <select id="layoutModeSelect" data-key="layoutMode">
+                <option value="wall">地面放置</option>
+                <option value="tabletop">桌面放置</option>
+              </select>
+            </div>
+            <div class="field" id="showRecessField">
+              <label for="showRecessCheckbox">是否带有凹槽</label>
+              <input id="showRecessCheckbox" data-key="showRecess" type="checkbox" />
+            </div>
+            <div class="subsection-title" id="dimensionSectionTitle">立方体尺寸</div>
+            <div class="field" id="widthField">
+              <label for="widthRange">宽</label>
+              <input id="widthRange" data-key="width" type="range" min="0.3" max="5.2" step="0.01" />
+              <input id="widthNumber" data-key="width" type="number" min="0.3" max="5.2" step="0.01" />
+            </div>
+            <div class="field" id="heightField">
+              <label for="heightRange">高</label>
+              <input id="heightRange" data-key="height" type="range" min="0.3" max="4.8" step="0.01" />
+              <input id="heightNumber" data-key="height" type="number" min="0.3" max="4.8" step="0.01" />
+            </div>
+            <div class="field" id="aspectRatioField">
+              <label for="aspectRatioNumber">宽高比</label>
+              <input id="aspectRatioNumber" data-key="aspectRatio" type="text" inputmode="decimal" placeholder="1.5" />
+            </div>
+            <div class="field" id="lockAspectRatioField">
+              <label for="lockAspectRatioCheckbox">锁定比例</label>
+              <input id="lockAspectRatioCheckbox" data-key="lockAspectRatio" type="checkbox" />
+            </div>
+            <div class="field" id="depthField">
+              <label for="depthRange">深</label>
+              <input id="depthRange" data-key="depth" type="range" min="0.45" max="1.35" step="0.01" />
+              <input id="depthNumber" data-key="depth" type="number" min="0.45" max="1.35" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="gapRange">间距</label>
+              <input id="gapRange" data-key="gap" type="range" min="1.0" max="2.6" step="0.01" />
+              <input id="gapNumber" data-key="gap" type="number" min="1.0" max="2.6" step="0.01" />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="group-title">相机</div>
+            <div class="field">
+              <label for="cameraDistanceRange">镜距</label>
+              <input id="cameraDistanceRange" data-key="cameraDistance" type="range" min="5.8" max="12.5" step="0.01" />
+              <input id="cameraDistanceNumber" data-key="cameraDistance" type="number" min="5.8" max="12.5" step="0.01" />
+            </div>
+            <div class="field" id="cameraYawField">
+              <label for="cameraYawRange">水平角</label>
+              <input id="cameraYawRange" data-key="cameraYaw" type="range" min="-18" max="18" step="0.1" />
+              <input id="cameraYawNumber" data-key="cameraYaw" type="number" min="-18" max="18" step="0.1" />
+            </div>
+            <div class="field" id="cameraPitchField">
+              <label for="cameraPitchRange">垂直角</label>
+              <input id="cameraPitchRange" data-key="cameraPitch" type="range" min="8" max="36" step="0.1" />
+              <input id="cameraPitchNumber" data-key="cameraPitch" type="number" min="8" max="36" step="0.1" />
+            </div>
+            <div class="field">
+              <label for="cameraPanXRange">左右</label>
+              <input id="cameraPanXRange" data-key="cameraPanX" type="range" min="-1.8" max="1.8" step="0.01" />
+              <input id="cameraPanXNumber" data-key="cameraPanX" type="number" min="-1.8" max="1.8" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="cameraPanYRange">上下</label>
+              <input id="cameraPanYRange" data-key="cameraPanY" type="range" min="-1.8" max="1.8" step="0.01" />
+              <input id="cameraPanYNumber" data-key="cameraPanY" type="number" min="-1.8" max="1.8" step="0.01" />
+            </div>
+          </div>
+
+          <details class="color-panel">
+            <summary>颜色设置</summary>
+            <div class="color-field">
+              <label for="dimensionColorText">标注线颜色</label>
+              <input id="dimensionColorPicker" data-color-key="dimension" type="color" />
+              <input id="dimensionColorText" data-color-key="dimension" type="text" />
+            </div>
+            <div class="color-field">
+              <label for="wallLineColorText">墙线颜色</label>
+              <input id="wallLineColorPicker" data-color-key="wallLine" type="color" />
+              <input id="wallLineColorText" data-color-key="wallLine" type="text" />
+            </div>
+            <div class="color-field">
+              <label for="objectEdgeColorText">轮廓线颜色</label>
+              <input id="objectEdgeColorPicker" data-color-key="objectEdge" type="color" />
+              <input id="objectEdgeColorText" data-color-key="objectEdge" type="text" />
+            </div>
+            <div class="color-field">
+              <label for="applianceSideColorText">商品侧面颜色</label>
+              <input id="applianceSideColorPicker" data-color-key="applianceSide" type="color" />
+              <input id="applianceSideColorText" data-color-key="applianceSide" type="text" />
+            </div>
+            <div class="color-field">
+              <label for="recessBackColorText">凹槽底色</label>
+              <input id="recessBackColorPicker" data-color-key="recessBack" type="color" />
+              <input id="recessBackColorText" data-color-key="recessBack" type="text" />
+            </div>
+          </details>
+        </aside>
+
+        <section class="preview-pane">
+          <div class="preview-toolbar" aria-label="图片规格">
+            <div class="ratio-tabs" id="outputRatioTabs">
+              <button class="ratio-tab" type="button" data-output-ratio="3:2">3:2</button>
+              <button class="ratio-tab" type="button" data-output-ratio="4:3">4:3</button>
+              <button class="ratio-tab" type="button" data-output-ratio="16:9">16:9</button>
+            </div>
+          </div>
+          <div class="drawing-sheet">
+            <canvas id="scene" aria-label="墙面凸出与凹入体块的三维尺寸线稿"></canvas>
+          </div>
+          <div class="variant-dock" id="variantDock" aria-label="方案预览"></div>
+          <div class="variant-actions">
+            <button class="text-button" id="exportCurrent" type="button">导出当前</button>
+            <button class="text-button" id="exportAll" type="button">导出全部</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./vendor/three.min.js"></script>
+    <script>
+      const COLORS = {
+        background: 0xffffff,
+        wallLine: 0x9fa3a7,
+        wallLineSoft: 0xc9cbd0,
+        objectEdge: 0x1f2428,
+        leftFront: 0xffffff,
+        leftSide: 0xd0d4da,
+        leftTop: 0xf4f5f7,
+        recessBack: 0xf7f8fa,
+        recessSide: 0xe5e8ee,
+        recessFloor: 0xeff1f5,
+        applianceFront: 0xfbfbfb,
+        applianceSide: 0xc7c8ca,
+        applianceTop: 0xffffff,
+        applianceDetail: 0x3d4145,
+        applianceGroove: 0x111315,
+        applianceShadow: 0x9da3aa,
+        dimension: 0xff614d
+      };
+
+      const state = {
+        layoutMode: "wall",
+        outputRatio: "3:2",
+        showRecess: "true",
+        recessFit: "larger",
+        skuFrontUrl: "./assets/fridge-front-sku.png",
+        skuSideUrl: "./assets/fridge-side-texture-a.png",
+        width: 1.82,
+        height: 3.45,
+        aspectRatio: 0.53,
+        lockAspectRatio: "false",
+        depth: 0.78,
+        gap: 1.82,
+        cameraDistance: 8.88,
+        cameraYaw: 0,
+        cameraPitch: 0,
+        cameraPanX: 0,
+        cameraPanY: 0
+      };
+      const variantKeys = Object.keys(state);
+      let activeVariantIndex = 0;
+      const variants = Array.from({ length: 6 }, () => null);
+
+      const canvas = document.querySelector("#scene");
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: false,
+        preserveDrawingBuffer: true
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(COLORS.background, 1);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(COLORS.background);
+      const textureLoader = new THREE.TextureLoader();
+      const textureCache = new Map();
+
+      const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+      const cameraTarget = new THREE.Vector3(0.08, 1.92, 0.06);
+      const defaultCameraOffset = new THREE.Vector3(4.35, 1.92, 7.85).sub(cameraTarget);
+      const cameraHeightOffset = defaultCameraOffset.y;
+      const cameraHorizontalRadius = Math.hypot(defaultCameraOffset.x, defaultCameraOffset.z);
+      const cameraBaseAngle = Math.atan2(defaultCameraOffset.z, defaultCameraOffset.x);
+
+      function updateCamera() {
+        if (state.layoutMode === "tabletop") {
+          const yaw = THREE.MathUtils.degToRad(state.cameraYaw);
+          const pitch = THREE.MathUtils.degToRad(state.cameraPitch);
+          const target = new THREE.Vector3(state.cameraPanX, 0.18 + state.cameraPanY, 0.06);
+          const verticalDistance = Math.sin(pitch) * state.cameraDistance;
+          const forwardDistance = Math.cos(pitch) * state.cameraDistance;
+          camera.position.set(
+            target.x + Math.sin(yaw) * forwardDistance,
+            target.y + verticalDistance,
+            target.z + Math.cos(yaw) * forwardDistance
+          );
+          camera.lookAt(target);
+          camera.updateMatrixWorld();
+          return;
+        }
+        const yaw = THREE.MathUtils.degToRad(state.cameraYaw);
+        const pitch = THREE.MathUtils.degToRad(state.cameraPitch);
+        const baseTarget = cameraTarget;
+        const verticalDistance = Math.sin(pitch) * state.cameraDistance + cameraHeightOffset;
+        const horizontalDistance = Math.max(0.1, Math.cos(pitch) * state.cameraDistance);
+        const angle = cameraBaseAngle + yaw;
+        const target = baseTarget.clone().add(v(state.cameraPanX, state.cameraPanY, 0));
+        camera.position.set(
+          target.x + Math.cos(angle) * horizontalDistance,
+          target.y + verticalDistance,
+          target.z + Math.sin(angle) * horizontalDistance
+        );
+        camera.lookAt(target);
+        camera.updateMatrixWorld();
+      }
+
+      updateCamera();
+
+      const root = new THREE.Group();
+      scene.add(root);
+
+      const vectorX = new THREE.Vector3(1, 0, 0);
+      const vectorY = new THREE.Vector3(0, 1, 0);
+      const vectorZ = new THREE.Vector3(0, 0, 1);
+      const WALL_VERTICAL_LINES = [-3.75, -2.05, -0.7, 0.72, 1.82, 3.1, 4.08];
+      const WALL_HORIZONTAL_LINES = [2.05, 4.18, 6.35];
+
+      function material(color, opacity = 1) {
+        return new THREE.MeshBasicMaterial({
+          color,
+          transparent: opacity < 1,
+          opacity,
+          side: THREE.DoubleSide,
+          depthWrite: opacity >= 1,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+      }
+
+      const lineMaterials = {
+        wall: new THREE.LineBasicMaterial({
+          color: COLORS.wallLine,
+          transparent: true,
+          opacity: 0.62,
+          depthTest: true,
+          depthWrite: false
+        }),
+        soft: new THREE.LineBasicMaterial({
+          color: COLORS.wallLineSoft,
+          transparent: true,
+          opacity: 0.46,
+          depthTest: true,
+          depthWrite: false
+        }),
+        edge: new THREE.LineBasicMaterial({
+          color: COLORS.objectEdge,
+          transparent: true,
+          opacity: 0.98,
+          depthTest: true,
+          depthWrite: false
+        }),
+        applianceDetail: new THREE.LineBasicMaterial({
+          color: COLORS.applianceDetail,
+          transparent: true,
+          opacity: 0.88,
+          depthTest: true,
+          depthWrite: false
+        }),
+        applianceGroove: new THREE.LineBasicMaterial({
+          color: COLORS.applianceGroove,
+          transparent: true,
+          opacity: 0.58,
+          depthTest: true,
+          depthWrite: false
+        }),
+        panelGrain: new THREE.LineBasicMaterial({
+          color: 0xd8d9d7,
+          transparent: true,
+          opacity: 0.22,
+          depthTest: true,
+          depthWrite: false
+        }),
+        dimension: new THREE.LineBasicMaterial({
+          color: COLORS.dimension,
+          transparent: true,
+          opacity: 0.98,
+          depthTest: false,
+          depthWrite: false
+        })
+      };
+      const strokeStyles = new Map([
+        [lineMaterials.wall, { width: 0.0034, renderOrder: 2, depthTest: true }],
+        [lineMaterials.soft, { width: 0.0026, renderOrder: 1, depthTest: true }],
+        [lineMaterials.edge, { width: 0.0042, renderOrder: 10, depthTest: true }],
+        [lineMaterials.applianceDetail, { width: 0.0044, renderOrder: 11, depthTest: true }],
+        [lineMaterials.applianceGroove, { width: 0.0038, renderOrder: 12, depthTest: true }],
+        [lineMaterials.panelGrain, { width: 0.002, renderOrder: 3, depthTest: true }],
+        [lineMaterials.dimension, { width: 0.008, renderOrder: 20, depthTest: false }]
+      ]);
+      const segmentStrokeMaterials = new Map();
+
+      function clearRoot() {
+        while (root.children.length) {
+          const child = root.children.pop();
+          child.traverse((node) => {
+            if (node.geometry) node.geometry.dispose();
+            const sharedMaterials = [...Object.values(lineMaterials), ...segmentStrokeMaterials.values()];
+            if (node.material && !sharedMaterials.includes(node.material)) {
+              node.material.dispose();
+            }
+          });
+        }
+      }
+
+      function v(x, y, z) {
+        return new THREE.Vector3(x, y, z);
+      }
+
+      function addQuad(group, points, fill) {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+          points[0].x,
+          points[0].y,
+          points[0].z,
+          points[1].x,
+          points[1].y,
+          points[1].z,
+          points[2].x,
+          points[2].y,
+          points[2].z,
+          points[0].x,
+          points[0].y,
+          points[0].z,
+          points[2].x,
+          points[2].y,
+          points[2].z,
+          points[3].x,
+          points[3].y,
+          points[3].z
+        ]);
+        geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+        geometry.computeVertexNormals();
+        group.add(new THREE.Mesh(geometry, fill));
+      }
+
+      function getTexture(url) {
+        if (!url) return null;
+        if (textureCache.has(url)) return textureCache.get(url);
+        textureCache.set(url, null);
+        textureLoader.load(
+          url,
+          (texture) => {
+            if ("colorSpace" in texture && THREE.SRGBColorSpace) {
+              texture.colorSpace = THREE.SRGBColorSpace;
+            }
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.needsUpdate = true;
+            textureCache.set(url, texture);
+            rebuild();
+          },
+          undefined,
+          () => {
+            textureCache.delete(url);
+          }
+        );
+        return null;
+      }
+
+      function texturedMaterial(texture, fallbackColor = COLORS.applianceFront) {
+        if (!texture) return material(fallbackColor);
+        return new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+      }
+
+      function addTexturedQuad(group, points, fill) {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+          points[0].x,
+          points[0].y,
+          points[0].z,
+          points[1].x,
+          points[1].y,
+          points[1].z,
+          points[2].x,
+          points[2].y,
+          points[2].z,
+          points[0].x,
+          points[0].y,
+          points[0].z,
+          points[2].x,
+          points[2].y,
+          points[2].z,
+          points[3].x,
+          points[3].y,
+          points[3].z
+        ]);
+        const uvs = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]);
+        geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+        geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+        geometry.computeVertexNormals();
+        group.add(new THREE.Mesh(geometry, fill));
+      }
+
+      function getStrokeMaterial(lineMaterial) {
+        if (segmentStrokeMaterials.has(lineMaterial)) return segmentStrokeMaterials.get(lineMaterial);
+        const strokeMaterial = new THREE.MeshBasicMaterial({
+          color: lineMaterial.color,
+          transparent: lineMaterial.transparent || lineMaterial.opacity < 1,
+          opacity: lineMaterial.opacity,
+          depthTest: strokeStyles.get(lineMaterial)?.depthTest ?? lineMaterial.depthTest,
+          depthWrite: false
+        });
+        segmentStrokeMaterials.set(lineMaterial, strokeMaterial);
+        return strokeMaterial;
+      }
+
+      function addStrokeSegment(group, start, end, lineMaterial) {
+        const style = strokeStyles.get(lineMaterial);
+        if (!style) {
+          const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+          const line = new THREE.Line(geometry, lineMaterial);
+          group.add(line);
+          return;
+        }
+        const direction = end.clone().sub(start);
+        const length = direction.length();
+        if (length <= 0.0001) return;
+        const geometry = new THREE.CylinderGeometry(style.width, style.width, length, 8, 1);
+        const mesh = new THREE.Mesh(geometry, getStrokeMaterial(lineMaterial));
+        mesh.position.copy(start).add(end).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(vectorY, direction.normalize());
+        mesh.renderOrder = style.renderOrder;
+        group.add(mesh);
+      }
+
+      function addSegments(group, pairs, lineMaterial) {
+        for (const [a, b] of pairs) {
+          addStrokeSegment(group, a, b, lineMaterial);
+        }
+      }
+
+      function addCircle(group, center, radius, lineMaterial, segments = 48) {
+        const pairs = [];
+        for (let i = 0; i < segments; i += 1) {
+          const angle = (i / segments) * Math.PI * 2;
+          const nextAngle = ((i + 1) / segments) * Math.PI * 2;
+          pairs.push([
+            v(center.x + Math.cos(angle) * radius, center.y + Math.sin(angle) * radius, center.z),
+            v(center.x + Math.cos(nextAngle) * radius, center.y + Math.sin(nextAngle) * radius, center.z)
+          ]);
+        }
+        addSegments(group, pairs, lineMaterial);
+      }
+
+      function addFrontRect(group, x0, y0, x1, y1, z, lineMaterial = lineMaterials.applianceDetail) {
+        addSegments(
+          group,
+          [
+            [v(x0, y0, z), v(x1, y0, z)],
+            [v(x1, y0, z), v(x1, y1, z)],
+            [v(x1, y1, z), v(x0, y1, z)],
+            [v(x0, y1, z), v(x0, y0, z)]
+          ],
+          lineMaterial
+        );
+      }
+
+      function addFrontBand(group, x0, x1, y, z, height, color = COLORS.applianceGroove, opacity = 0.2) {
+        addQuad(
+          group,
+          [v(x0, y, z), v(x1, y, z), v(x1, y + height, z), v(x0, y + height, z)],
+          material(color, opacity)
+        );
+      }
+
+      function addCuboid(group, x0, x1, y0, y1, z0, z1, fills) {
+        const front = fills.front;
+        const back = fills.back || fills.front;
+        const right = fills.right || fills.side;
+        const left = fills.left || fills.side || fills.right;
+        const top = fills.top;
+        const bottom = fills.bottom || fills.top;
+        if (front) addQuad(group, [v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1)], front);
+        if (right) addQuad(group, [v(x1, y0, z1), v(x1, y0, z0), v(x1, y1, z0), v(x1, y1, z1)], right);
+        if (back) addQuad(group, [v(x1, y0, z0), v(x0, y0, z0), v(x0, y1, z0), v(x1, y1, z0)], back);
+        if (left) addQuad(group, [v(x0, y0, z0), v(x0, y0, z1), v(x0, y1, z1), v(x0, y1, z0)], left);
+        if (top) addQuad(group, [v(x0, y1, z1), v(x1, y1, z1), v(x1, y1, z0), v(x0, y1, z0)], top);
+        if (bottom) addQuad(group, [v(x0, y0, z0), v(x1, y0, z0), v(x1, y0, z1), v(x0, y0, z1)], bottom);
+      }
+
+      function addPanelGrain(group, x0, x1, y0, y1, z, count = 22) {
+        const lines = [];
+        for (let i = 1; i < count; i += 1) {
+          const y = y0 + ((y1 - y0) * i) / count;
+          lines.push([v(x0, y, z), v(x1, y, z)]);
+        }
+        addSegments(group, lines, lineMaterials.panelGrain);
+      }
+
+      function addDiagonalHighlight(group, x0, x1, y0, y1, z, opacity = 0.22) {
+        const width = x1 - x0;
+        const height = y1 - y0;
+        addQuad(
+          group,
+          [
+            v(x0 + width * 0.62, y1, z),
+            v(x1, y1, z),
+            v(x0 + width * 0.72, y0 + height * 0.12, z),
+            v(x0 + width * 0.42, y0 + height * 0.12, z)
+          ],
+          material(0xffffff, opacity)
+        );
+      }
+
+      function addDimension(group, start, end, tickAxis, tickSize = 0.16) {
+        const axis = tickAxis.clone().normalize().multiplyScalar(tickSize * 0.38);
+        addSegments(
+          group,
+          [
+            [start, end],
+            [start.clone().sub(axis), start.clone().add(axis)],
+            [end.clone().sub(axis), end.clone().add(axis)]
+          ],
+          lineMaterials.dimension
+        );
+      }
+
+      function addWallAndFloor(group, recessOpening) {
+        const wallLines = [];
+        const xMin = -16;
+        const xMax = 16;
+        const yMax = 12;
+        const z = -0.002;
+        const verticalLines = recessOpening
+          ? createRecessAlignedVerticalLines(recessOpening)
+          : WALL_VERTICAL_LINES;
+        const horizontalLines = recessOpening
+          ? createRecessAlignedHorizontalLines(recessOpening)
+          : WALL_HORIZONTAL_LINES;
+
+        for (const x of verticalLines) {
+          if (recessOpening && x > recessOpening.x0 && x < recessOpening.x1) {
+            wallLines.push([v(x, recessOpening.y1, z), v(x, yMax, z)]);
+          } else {
+            wallLines.push([v(x, 0, z), v(x, yMax, z)]);
+          }
+        }
+
+        for (const y of horizontalLines) {
+          if (recessOpening && y > recessOpening.y0 && y < recessOpening.y1) {
+            wallLines.push([v(xMin, y, z), v(recessOpening.x0, y, z)]);
+            wallLines.push([v(recessOpening.x1, y, z), v(xMax, y, z)]);
+          } else {
+            wallLines.push([v(xMin, y, z), v(xMax, y, z)]);
+          }
+        }
+
+        wallLines.push([v(xMin, 0, 0), v(xMax, 0, 0)]);
+        addSegments(group, wallLines, lineMaterials.wall);
+      }
+
+      function createDistributedLines(start, end, count) {
+        const lines = [];
+        const step = (end - start) / count;
+        for (let i = 1; i < count; i += 1) {
+          lines.push(start + step * i);
+        }
+        return lines;
+      }
+
+      function createRecessAlignedVerticalLines(recessOpening) {
+        const recessWidth = recessOpening.x1 - recessOpening.x0;
+        const spacing = recessWidth;
+        const lines = [recessOpening.x0, recessOpening.x1];
+        for (let x = recessOpening.x0 - spacing; x > -16; x -= spacing) {
+          lines.push(x);
+        }
+        for (let x = recessOpening.x1 + spacing; x < 16; x += spacing) {
+          lines.push(x);
+        }
+        return lines.sort((a, b) => a - b);
+      }
+
+      function createRecessAlignedHorizontalLines(recessOpening) {
+        const recessHeight = recessOpening.y1 - recessOpening.y0;
+        const spacing = Math.max(1.7, recessHeight * 0.55);
+        return [
+          recessOpening.y0,
+          recessOpening.y1,
+          recessOpening.y1 + spacing,
+          recessOpening.y1 + spacing * 2
+        ];
+      }
+
+      function addLeftBlock(group, centerX, dims) {
+        const { width: w, height: h, depth: d } = dims;
+        const x0 = centerX - w / 2;
+        const x1 = centerX + w / 2;
+        const y0 = 0;
+        const y1 = h;
+        const z0 = 0;
+        const z1 = d;
+
+        addCuboid(group, x0, x1, y0, y1, z0, z1, {
+          front: material(COLORS.leftFront),
+          back: material(COLORS.leftFront),
+          side: material(COLORS.leftSide),
+          top: material(COLORS.leftTop),
+          bottom: material(COLORS.leftSide)
+        });
+
+        const edges = [
+          [v(x0, y0, z1), v(x1, y0, z1)],
+          [v(x0, y1, z1), v(x1, y1, z1)],
+          [v(x0, y0, z1), v(x0, y1, z1)],
+          [v(x1, y0, z1), v(x1, y1, z1)],
+          [v(x0, y0, z0), v(x0, y1, z0)],
+          [v(x1, y0, z0), v(x1, y1, z0)],
+          [v(x0, y0, z0), v(x1, y0, z0)],
+          [v(x1, y0, z1), v(x1, y0, z0)],
+          [v(x0, y0, z1), v(x0, y0, z0)],
+          [v(x1, y1, z1), v(x1, y1, z0)],
+          [v(x0, y1, z1), v(x0, y1, z0)],
+          [v(x0, y1, z0), v(x1, y1, z0)]
+        ];
+        addSegments(group, edges, lineMaterials.edge);
+
+        addDimension(group, v(x0 - 0.16, y0, z1 + 0.03), v(x0 - 0.16, y1, z1 + 0.03), vectorX, 0.14);
+        addDimension(group, v(x0, y1 + 0.16, z1 + 0.02), v(x1, y1 + 0.16, z1 + 0.02), vectorY, 0.14);
+        addDimension(group, v(x1 + 0.16, y0, z0), v(x1 + 0.16, y0, z1), vectorX, 0.14);
+      }
+
+      function getProductTemplate(category) {
+        const value = category.trim().toLowerCase();
+        if (/(冰箱|fridge|refrigerator)/i.test(value)) return "fridge";
+        if (/(洗衣|washer|washing|dryer|干衣|烘干)/i.test(value)) return "washer";
+        if (/(电视|tv|display|screen|显示器|monitor)/i.test(value)) return "tv";
+        if (/(烤箱|oven|微波|microwave|蒸烤)/i.test(value)) return "oven";
+        if (/(空调|air conditioner|ac|aircon)/i.test(value)) return "ac";
+        return "generic";
+      }
+
+      function addLeftProduct(group, centerX, dims, category) {
+        const { width: w, height: h, depth: d } = dims;
+        const x0 = centerX - w / 2;
+        const x1 = centerX + w / 2;
+        const y0 = 0;
+        const y1 = h;
+        const z0 = 0;
+        const z1 = d;
+        const zFace = z1 + 0.006;
+        const xMid = (x0 + x1) / 2;
+        const template = getProductTemplate(category);
+
+        addQuad(group, [v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1)], material(COLORS.applianceFront));
+        addQuad(group, [v(x1, y0, z1), v(x1, y0, z0), v(x1, y1, z0), v(x1, y1, z1)], material(COLORS.applianceSide));
+        addQuad(group, [v(x0, y1, z1), v(x1, y1, z1), v(x1, y1, z0), v(x0, y1, z0)], material(COLORS.applianceTop));
+        addQuad(
+          group,
+          [v(x0 + w * 0.04, y0 + 0.004, z1 + d * 0.05), v(x1 + w * 0.08, y0 + 0.004, z1 - d * 0.02), v(x1 + w * 0.22, y0 + 0.004, z0 - d * 0.08), v(x0 + w * 0.18, y0 + 0.004, z0 - d * 0.02)],
+          material(COLORS.applianceShadow, 0.12)
+        );
+
+        const edges = [
+          [v(x0, y0, z1), v(x1, y0, z1)],
+          [v(x0, y1, z1), v(x1, y1, z1)],
+          [v(x0, y0, z1), v(x0, y1, z1)],
+          [v(x1, y0, z1), v(x1, y1, z1)],
+          [v(x1, y0, z0), v(x1, y1, z0)],
+          [v(x1, y0, z1), v(x1, y0, z0)],
+          [v(x1, y1, z1), v(x1, y1, z0)],
+          [v(x0, y1, z1), v(x0, y1, z0)],
+          [v(x0, y1, z0), v(x1, y1, z0)]
+        ];
+        addSegments(group, edges, lineMaterials.applianceDetail);
+
+        if (template === "fridge") {
+          const inset = w * 0.035;
+          const topDoorBottom = y0 + h * 0.48;
+          const middleDrawerBottom = y0 + h * 0.27;
+          const bottomInset = y0 + h * 0.045;
+          const topInset = y1 - h * 0.01;
+          const zSketch = z1 + 0.01;
+
+          addFrontBand(group, x0 + inset * 0.4, x1 - inset * 0.4, topDoorBottom - h * 0.012, zSketch + 0.002, h * 0.014, COLORS.applianceGroove, 0.24);
+          addFrontBand(group, x0 + inset * 0.4, x1 - inset * 0.4, middleDrawerBottom - h * 0.012, zSketch + 0.002, h * 0.014, COLORS.applianceGroove, 0.2);
+          addFrontBand(group, x0 + inset, x1 - inset, bottomInset - h * 0.01, zSketch + 0.002, h * 0.01, COLORS.applianceGroove, 0.18);
+
+          addSegments(
+            group,
+            [
+              [v(x0 + inset, topDoorBottom, zSketch), v(x1 - inset, topDoorBottom, zSketch)],
+              [v(x0 + inset, middleDrawerBottom, zSketch), v(x1 - inset, middleDrawerBottom, zSketch)],
+              [v(xMid, topDoorBottom, zSketch), v(xMid, topInset, zSketch)],
+              [v(xMid - w * 0.025, topDoorBottom + h * 0.055, zSketch), v(xMid - w * 0.025, y1 - h * 0.08, zSketch)],
+              [v(xMid + w * 0.025, topDoorBottom + h * 0.055, zSketch), v(xMid + w * 0.025, y1 - h * 0.08, zSketch)],
+              [v(x0 + inset, bottomInset, zSketch), v(x1 - inset, bottomInset, zSketch)],
+              [v(x0 + w * 0.12, y0 + h * 0.012, zSketch), v(x0 + w * 0.25, y0 + h * 0.012, zSketch)],
+              [v(x1 - w * 0.25, y0 + h * 0.012, zSketch), v(x1 - w * 0.12, y0 + h * 0.012, zSketch)]
+            ],
+            lineMaterials.applianceDetail
+          );
+          addFrontRect(group, x0 + inset, topDoorBottom + h * 0.012, xMid - w * 0.012, topInset, zSketch, lineMaterials.applianceGroove);
+          addFrontRect(group, xMid + w * 0.012, topDoorBottom + h * 0.012, x1 - inset, topInset, zSketch, lineMaterials.applianceGroove);
+          addFrontRect(group, x0 + inset, middleDrawerBottom + h * 0.018, x1 - inset, topDoorBottom - h * 0.018, zSketch, lineMaterials.applianceGroove);
+          addFrontRect(group, x0 + inset, bottomInset + h * 0.012, x1 - inset, middleDrawerBottom - h * 0.018, zSketch, lineMaterials.applianceGroove);
+          addSegments(
+            group,
+            [
+              [v(x0 + inset, topDoorBottom - h * 0.012, zSketch + 0.003), v(x1 - inset, topDoorBottom - h * 0.012, zSketch + 0.003)],
+              [v(x0 + inset, middleDrawerBottom - h * 0.012, zSketch + 0.003), v(x1 - inset, middleDrawerBottom - h * 0.012, zSketch + 0.003)],
+              [v(x1, y1 - h * 0.01, z1 - d * 0.08), v(x1 + w * 0.07, y1 - h * 0.02, z1 - d * 0.08)],
+              [v(x1 + w * 0.07, y1 - h * 0.02, z1 - d * 0.08), v(x1 + w * 0.07, y1 - h * 0.08, z1 - d * 0.08)],
+              [v(x1, y1 - h * 0.08, z1 - d * 0.08), v(x1 + w * 0.07, y1 - h * 0.08, z1 - d * 0.08)]
+            ],
+            lineMaterials.applianceGroove
+          );
+        } else if (template === "washer") {
+          const stripY = y1 - h * 0.18;
+          const doorRadius = Math.min(w, h) * 0.22;
+          addSegments(
+            group,
+            [
+              [v(x0, stripY, zFace), v(x1, stripY, zFace)],
+              [v(x0 + w * 0.1, stripY + h * 0.08, zFace), v(x0 + w * 0.34, stripY + h * 0.08, zFace)],
+              [v(x1 - w * 0.28, stripY + h * 0.08, zFace), v(x1 - w * 0.12, stripY + h * 0.08, zFace)]
+            ],
+            lineMaterials.applianceDetail
+          );
+          addCircle(group, v(xMid, y0 + h * 0.42, zFace), doorRadius, lineMaterials.applianceDetail);
+          addCircle(group, v(xMid, y0 + h * 0.42, zFace), doorRadius * 0.72, lineMaterials.applianceDetail);
+        } else if (template === "tv") {
+          const insetX = w * 0.09;
+          const insetY = h * 0.12;
+          addSegments(
+            group,
+            [
+              [v(x0 + insetX, y0 + insetY, zFace), v(x1 - insetX, y0 + insetY, zFace)],
+              [v(x1 - insetX, y0 + insetY, zFace), v(x1 - insetX, y1 - insetY, zFace)],
+              [v(x1 - insetX, y1 - insetY, zFace), v(x0 + insetX, y1 - insetY, zFace)],
+              [v(x0 + insetX, y1 - insetY, zFace), v(x0 + insetX, y0 + insetY, zFace)],
+              [v(x0 + w * 0.32, y0 + h * 0.08, zFace), v(x1 - w * 0.32, y0 + h * 0.08, zFace)]
+            ],
+            lineMaterials.applianceDetail
+          );
+        } else if (template === "oven") {
+          const insetX = w * 0.16;
+          const windowTop = y0 + h * 0.72;
+          const windowBottom = y0 + h * 0.28;
+          addSegments(
+            group,
+            [
+              [v(x0, y1 - h * 0.18, zFace), v(x1, y1 - h * 0.18, zFace)],
+              [v(x0 + insetX, windowBottom, zFace), v(x1 - insetX, windowBottom, zFace)],
+              [v(x1 - insetX, windowBottom, zFace), v(x1 - insetX, windowTop, zFace)],
+              [v(x1 - insetX, windowTop, zFace), v(x0 + insetX, windowTop, zFace)],
+              [v(x0 + insetX, windowTop, zFace), v(x0 + insetX, windowBottom, zFace)]
+            ],
+            lineMaterials.applianceDetail
+          );
+          addCircle(group, v(x0 + w * 0.28, y1 - h * 0.09, zFace), w * 0.035, lineMaterials.applianceDetail, 24);
+          addCircle(group, v(x1 - w * 0.28, y1 - h * 0.09, zFace), w * 0.035, lineMaterials.applianceDetail, 24);
+        } else if (template === "ac") {
+          const lower = y0 + h * 0.28;
+          addSegments(
+            group,
+            [
+              [v(x0 + w * 0.08, lower, zFace), v(x1 - w * 0.08, lower, zFace)],
+              [v(x0 + w * 0.12, lower + h * 0.08, zFace), v(x1 - w * 0.12, lower + h * 0.08, zFace)],
+              [v(x0 + w * 0.16, y1 - h * 0.22, zFace), v(x1 - w * 0.16, y1 - h * 0.22, zFace)]
+            ],
+            lineMaterials.applianceDetail
+          );
+        } else {
+          addSegments(
+            group,
+            [
+              [v(x0 + w * 0.12, y0 + h * 0.18, zFace), v(x1 - w * 0.12, y0 + h * 0.18, zFace)],
+              [v(x1 - w * 0.12, y0 + h * 0.18, zFace), v(x1 - w * 0.12, y1 - h * 0.18, zFace)],
+              [v(x1 - w * 0.12, y1 - h * 0.18, zFace), v(x0 + w * 0.12, y1 - h * 0.18, zFace)],
+              [v(x0 + w * 0.12, y1 - h * 0.18, zFace), v(x0 + w * 0.12, y0 + h * 0.18, zFace)]
+            ],
+            lineMaterials.applianceDetail
+          );
+        }
+
+        addDimension(group, v(x0 - 0.16, y0, z1 + 0.03), v(x0 - 0.16, y1, z1 + 0.03), vectorX, 0.14);
+        addDimension(group, v(x0, y1 + 0.16, z1 + 0.02), v(x1, y1 + 0.16, z1 + 0.02), vectorY, 0.14);
+        addDimension(group, v(x1 + 0.16, y0, z0), v(x1 + 0.16, y0, z1), vectorX, 0.14);
+      }
+
+      function addLeftSku(group, centerX, dims) {
+        const { width: w, height: h, depth: d } = dims;
+        const x0 = centerX - w / 2;
+        const x1 = centerX + w / 2;
+        const y0 = 0;
+        const y1 = h;
+        const z0 = 0;
+        const z1 = d;
+        const frontTexture = getTexture(state.skuFrontUrl);
+        const sideTexture = getTexture(state.skuSideUrl);
+
+        addTexturedQuad(
+          group,
+          [v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1)],
+          texturedMaterial(frontTexture, COLORS.applianceFront)
+        );
+        addTexturedQuad(
+          group,
+          [v(x1, y0, z1), v(x1, y0, z0), v(x1, y1, z0), v(x1, y1, z1)],
+          texturedMaterial(sideTexture, COLORS.applianceSide)
+        );
+
+        addDimension(group, v(x0 - 0.16, y0, z1 + 0.03), v(x0 - 0.16, y1, z1 + 0.03), vectorX, 0.14);
+        addDimension(group, v(x0, y1 + 0.16, z1 + 0.02), v(x1, y1 + 0.16, z1 + 0.02), vectorY, 0.14);
+        addDimension(group, v(x1 + 0.16, y0, z0), v(x1 + 0.16, y0, z1), vectorX, 0.14);
+      }
+
+      function addLeftFridge3d(group, centerX, dims) {
+        const { width: w, height: h, depth: d } = dims;
+        const x0 = centerX - w / 2;
+        const x1 = centerX + w / 2;
+        const y0 = 0;
+        const y1 = h;
+        const z0 = 0;
+        const z1 = d;
+        const xMid = (x0 + x1) / 2;
+        const cabinetFront = z1;
+        const frameFront = z1 + d * 0.045;
+        const panelFront = z1 + d * 0.085;
+        const railFront = z1 + d * 0.105;
+        const handleFront = z1 + d * 0.14;
+        const frameInset = w * 0.055;
+        const doorGap = w * 0.014;
+        const verticalGap = h * 0.02;
+        const topDoorBottom = y0 + h * 0.43;
+        const drawerSplit = y0 + h * 0.24;
+        const baseTop = y0 + h * 0.065;
+        const topInset = y1 - h * 0.035;
+        const faceMat = material(0xf7f7f4);
+        const faceMatLight = material(0xfcfcfa);
+        const drawerMat = material(0xefefec);
+        const bevelMat = material(0xd6d7d7);
+        const sideMat = material(0xc8cacc);
+        const sideDarkMat = material(0xb7babd);
+        const topMat = material(0xf1f2f2);
+        const railMat = material(0x101315);
+        const railTopMat = material(0x2a2e30);
+        const handleMat = material(0x1a1e20);
+        const shadowMat = material(0x000000, 0.1);
+
+        addQuad(
+          group,
+          [v(x0 + w * 0.08, y0 + 0.006, z1 + d * 0.05), v(x1 + w * 0.12, y0 + 0.006, z1 - d * 0.03), v(x1 + w * 0.24, y0 + 0.006, z0 - d * 0.08), v(x0 + w * 0.18, y0 + 0.006, z0 - d * 0.01)],
+          shadowMat
+        );
+
+        addCuboid(group, x0, x1, y0, y1, z0, z1, {
+          front: material(0xe7e8e8),
+          side: sideMat,
+          top: topMat
+        });
+        addQuad(group, [v(x1, y0 + h * 0.04, z1 - d * 0.02), v(x1, y0 + h * 0.04, z0 + d * 0.04), v(x1, y1 - h * 0.04, z0 + d * 0.04), v(x1, y1 - h * 0.04, z1 - d * 0.02)], material(0xd1d3d5, 0.34));
+        addQuad(group, [v(x1, y0 + h * 0.08, z1 - d * 0.08), v(x1, y0 + h * 0.08, z1 - d * 0.2), v(x1, y1 - h * 0.09, z1 - d * 0.24), v(x1, y1 - h * 0.09, z1 - d * 0.12)], material(0xffffff, 0.18));
+
+        addCuboid(group, x0 + w * 0.025, x1 - w * 0.025, y0 + h * 0.02, y1 - h * 0.02, cabinetFront, frameFront, {
+          front: material(0xf1f1ef),
+          side: bevelMat,
+          top: material(0xffffff),
+          bottom: bevelMat
+        });
+        addCuboid(group, x0 + w * 0.026, x0 + w * 0.052, y0 + h * 0.035, y1 - h * 0.035, frameFront, panelFront - d * 0.01, {
+          front: material(0xffffff),
+          side: material(0xd2d4d4),
+          top: material(0xffffff),
+          bottom: material(0xd2d4d4)
+        });
+        addCuboid(group, x1 - w * 0.052, x1 - w * 0.026, y0 + h * 0.035, y1 - h * 0.035, frameFront, panelFront - d * 0.01, {
+          front: material(0xd4d6d6),
+          side: material(0xbfc2c3),
+          top: material(0xf2f2f1),
+          bottom: material(0xbfc2c3)
+        });
+
+        const leftDoorX0 = x0 + frameInset;
+        const leftDoorX1 = xMid - doorGap;
+        const rightDoorX0 = xMid + doorGap;
+        const rightDoorX1 = x1 - frameInset;
+        const panelX0 = x0 + frameInset;
+        const panelX1 = x1 - frameInset;
+        const upperY0 = topDoorBottom + verticalGap;
+        const upperY1 = topInset;
+        const drawer1Y0 = drawerSplit + verticalGap;
+        const drawer1Y1 = topDoorBottom - verticalGap * 0.9;
+        const drawer2Y0 = baseTop + verticalGap;
+        const drawer2Y1 = drawerSplit - verticalGap * 0.9;
+
+        addCuboid(group, leftDoorX0, leftDoorX1, upperY0, upperY1, frameFront, panelFront, {
+          front: faceMat,
+          side: bevelMat,
+          top: faceMatLight,
+          bottom: bevelMat
+        });
+        addCuboid(group, rightDoorX0, rightDoorX1, upperY0, upperY1, frameFront, panelFront, {
+          front: faceMatLight,
+          side: bevelMat,
+          top: faceMatLight,
+          bottom: bevelMat
+        });
+        addPanelGrain(group, leftDoorX0 + w * 0.015, leftDoorX1 - w * 0.015, upperY0 + h * 0.02, upperY1 - h * 0.02, panelFront + 0.012, 34);
+        addPanelGrain(group, rightDoorX0 + w * 0.015, rightDoorX1 - w * 0.015, upperY0 + h * 0.02, upperY1 - h * 0.02, panelFront + 0.012, 34);
+        addDiagonalHighlight(group, leftDoorX0 + w * 0.02, leftDoorX1 - w * 0.02, upperY0 + h * 0.05, upperY1 - h * 0.03, panelFront + 0.014, 0.18);
+        addDiagonalHighlight(group, rightDoorX0 + w * 0.02, rightDoorX1 - w * 0.02, upperY0 + h * 0.05, upperY1 - h * 0.03, panelFront + 0.014, 0.24);
+        addCuboid(group, panelX0, panelX1, drawer1Y0, drawer1Y1, frameFront, panelFront, {
+          front: drawerMat,
+          side: bevelMat,
+          top: faceMatLight,
+          bottom: bevelMat
+        });
+        addPanelGrain(group, panelX0 + w * 0.02, panelX1 - w * 0.02, drawer1Y0 + h * 0.015, drawer1Y1 - h * 0.015, panelFront + 0.012, 14);
+        addPanelGrain(group, panelX0 + w * 0.02, panelX1 - w * 0.02, drawer2Y0 + h * 0.015, drawer2Y1 - h * 0.015, panelFront + 0.012, 18);
+        addQuad(group, [v(panelX0 + w * 0.08, drawer1Y1 - h * 0.08, panelFront + 0.014), v(panelX1 - w * 0.08, drawer1Y1 - h * 0.08, panelFront + 0.014), v(panelX1 - w * 0.16, drawer1Y0 + h * 0.05, panelFront + 0.014), v(panelX0 + w * 0.16, drawer1Y0 + h * 0.05, panelFront + 0.014)], material(0xffffff, 0.12));
+        addCuboid(group, panelX0, panelX1, drawer2Y0, drawer2Y1, frameFront, panelFront, {
+          front: drawerMat,
+          side: bevelMat,
+          top: faceMatLight,
+          bottom: bevelMat
+        });
+
+        addCuboid(group, panelX0 - w * 0.006, panelX1 + w * 0.006, topDoorBottom - h * 0.035, topDoorBottom - h * 0.012, panelFront, railFront, {
+          front: railMat,
+          side: railMat,
+          top: railTopMat,
+          bottom: railMat
+        });
+        addCuboid(group, panelX0 + w * 0.04, panelX1 - w * 0.04, topDoorBottom - h * 0.044, topDoorBottom - h * 0.035, frameFront, panelFront + d * 0.005, {
+          front: material(0x030405),
+          side: material(0x030405),
+          top: material(0x202426),
+          bottom: material(0x030405)
+        });
+        addCuboid(group, panelX0 + w * 0.04, panelX1 - w * 0.04, drawerSplit - h * 0.044, drawerSplit - h * 0.035, frameFront, panelFront + d * 0.005, {
+          front: material(0x030405),
+          side: material(0x030405),
+          top: material(0x202426),
+          bottom: material(0x030405)
+        });
+        addCuboid(group, panelX0 - w * 0.006, panelX1 + w * 0.006, drawerSplit - h * 0.035, drawerSplit - h * 0.014, panelFront, railFront, {
+          front: railMat,
+          side: railMat,
+          top: railTopMat,
+          bottom: railMat
+        });
+        addCuboid(group, x0 + w * 0.08, x1 - w * 0.08, y0 + h * 0.025, y0 + h * 0.048, panelFront, railFront, {
+          front: railMat,
+          side: railMat,
+          top: railTopMat,
+          bottom: railMat
+        });
+
+        addCuboid(group, xMid - w * 0.02, xMid - w * 0.006, upperY0 + h * 0.13, upperY1 - h * 0.16, panelFront, handleFront, {
+          front: handleMat,
+          side: material(0x0c0f10),
+          top: material(0x3a3d3f),
+          bottom: material(0x0c0f10)
+        });
+        addCuboid(group, xMid - w * 0.017, xMid - w * 0.011, upperY0 + h * 0.17, upperY1 - h * 0.2, handleFront, handleFront + d * 0.025, {
+          front: material(0x55595a),
+          side: material(0x111415),
+          top: material(0x707475),
+          bottom: material(0x111415)
+        });
+        addCuboid(group, xMid + w * 0.006, xMid + w * 0.02, upperY0 + h * 0.13, upperY1 - h * 0.16, panelFront, handleFront, {
+          front: material(0x262a2c),
+          side: material(0x0c0f10),
+          top: material(0x3a3d3f),
+          bottom: material(0x0c0f10)
+        });
+
+        addSegments(
+          group,
+          [
+            [v(x0, y0, z1), v(x1, y0, z1)],
+            [v(x0, y1, z1), v(x1, y1, z1)],
+            [v(x0, y0, z1), v(x0, y1, z1)],
+            [v(x1, y0, z1), v(x1, y1, z1)],
+            [v(x1, y0, z0), v(x1, y1, z0)],
+            [v(x1, y0, z1), v(x1, y0, z0)],
+            [v(x1, y1, z1), v(x1, y1, z0)],
+            [v(x0, y1, z1), v(x0, y1, z0)],
+            [v(leftDoorX0, upperY0, panelFront + 0.008), v(leftDoorX1, upperY0, panelFront + 0.008)],
+            [v(leftDoorX1, upperY0, panelFront + 0.008), v(leftDoorX1, upperY1, panelFront + 0.008)],
+            [v(leftDoorX1, upperY1, panelFront + 0.008), v(leftDoorX0, upperY1, panelFront + 0.008)],
+            [v(leftDoorX0, upperY1, panelFront + 0.008), v(leftDoorX0, upperY0, panelFront + 0.008)],
+            [v(rightDoorX0, upperY0, panelFront + 0.008), v(rightDoorX1, upperY0, panelFront + 0.008)],
+            [v(rightDoorX1, upperY0, panelFront + 0.008), v(rightDoorX1, upperY1, panelFront + 0.008)],
+            [v(rightDoorX1, upperY1, panelFront + 0.008), v(rightDoorX0, upperY1, panelFront + 0.008)],
+            [v(rightDoorX0, upperY1, panelFront + 0.008), v(rightDoorX0, upperY0, panelFront + 0.008)],
+            [v(xMid, upperY0, panelFront + 0.01), v(xMid, upperY1, panelFront + 0.01)],
+            [v(panelX0, drawer1Y0, panelFront + 0.008), v(panelX1, drawer1Y0, panelFront + 0.008)],
+            [v(panelX0, drawer1Y1, panelFront + 0.008), v(panelX1, drawer1Y1, panelFront + 0.008)],
+            [v(panelX0, drawer2Y0, panelFront + 0.008), v(panelX1, drawer2Y0, panelFront + 0.008)],
+            [v(panelX0, drawer2Y1, panelFront + 0.008), v(panelX1, drawer2Y1, panelFront + 0.008)]
+          ],
+          lineMaterials.applianceDetail
+        );
+
+        addCuboid(group, x0 + w * 0.08, x0 + w * 0.18, y0 - h * 0.015, y0 + h * 0.035, z1 - d * 0.02, z1 + d * 0.08, {
+          front: railMat,
+          side: railMat,
+          top: railTopMat
+        });
+        addCuboid(group, x1 - w * 0.18, x1 - w * 0.08, y0 - h * 0.015, y0 + h * 0.035, z1 - d * 0.02, z1 + d * 0.08, {
+          front: railMat,
+          side: railMat,
+          top: railTopMat
+        });
+
+        addDimension(group, v(x0 - 0.16, y0, z1 + 0.03), v(x0 - 0.16, y1, z1 + 0.03), vectorX, 0.14);
+        addDimension(group, v(x0, y1 + 0.16, z1 + 0.02), v(x1, y1 + 0.16, z1 + 0.02), vectorY, 0.14);
+        addDimension(group, v(x1 + 0.16, y0, z0), v(x1 + 0.16, y0, z1), vectorX, 0.14);
+      }
+
+      function addRightRecess(group, centerX, dims) {
+        const { width: w, height: h, depth: d } = dims;
+        const x0 = centerX - w / 2;
+        const x1 = centerX + w / 2;
+        const y0 = 0;
+        const y1 = h;
+        const zFront = 0;
+        const zBack = -d;
+
+        addQuad(group, [v(x0, y0, zBack), v(x1, y0, zBack), v(x1, y1, zBack), v(x0, y1, zBack)], material(COLORS.recessBack, 0.92));
+        addQuad(group, [v(x0, y0, zFront), v(x0, y0, zBack), v(x0, y1, zBack), v(x0, y1, zFront)], material(COLORS.recessSide, 0.9));
+        addQuad(group, [v(x1, y0, zBack), v(x1, y0, zFront), v(x1, y1, zFront), v(x1, y1, zBack)], material(COLORS.recessBack, 0.72));
+        addQuad(group, [v(x0, y1, zFront), v(x1, y1, zFront), v(x1, y1, zBack), v(x0, y1, zBack)], material(COLORS.recessFloor, 0.9));
+        addQuad(group, [v(x0, y0, zBack), v(x1, y0, zBack), v(x1, y0, zFront), v(x0, y0, zFront)], material(COLORS.recessFloor, 0.92));
+
+        const edges = [
+          [v(x0, y0, zFront), v(x1, y0, zFront)],
+          [v(x0, y1, zFront), v(x1, y1, zFront)],
+          [v(x0, y0, zFront), v(x0, y1, zFront)],
+          [v(x1, y0, zFront), v(x1, y1, zFront)],
+          [v(x0, y0, zBack), v(x1, y0, zBack)],
+          [v(x0, y1, zBack), v(x1, y1, zBack)],
+          [v(x0, y0, zBack), v(x0, y1, zBack)],
+          [v(x1, y0, zBack), v(x1, y1, zBack)],
+          [v(x0, y0, zFront), v(x0, y0, zBack)],
+          [v(x1, y0, zFront), v(x1, y0, zBack)],
+          [v(x0, y1, zFront), v(x0, y1, zBack)],
+          [v(x1, y1, zFront), v(x1, y1, zBack)]
+        ];
+        addSegments(group, edges, lineMaterials.wall);
+
+        addDimension(group, v(x0, y1 + 0.16, zFront + 0.035), v(x1, y1 + 0.16, zFront + 0.035), vectorY, 0.14);
+        addDimension(group, v(x1 + 0.16, y0, zFront + 0.035), v(x1 + 0.16, y1, zFront + 0.035), vectorX, 0.14);
+        addDimension(group, v(x0 + 0.12, y0, zFront), v(x0 + 0.12, y0, zBack), vectorX, 0.14);
+      }
+
+      function addTabletopScene(group, dims) {
+        const { width: w, height: h, depth: d } = dims;
+        const hasRecess = state.showRecess === "true";
+        const recessDims = getRecessDims(dims);
+        const x0 = -w / 2;
+        const x1 = w / 2;
+        const objectY0 = hasRecess ? state.gap : 0;
+        const objectY1 = objectY0 + h;
+        const z0 = -d / 2;
+        const z1 = d / 2;
+        const tableBack = -1.45;
+        const tableFront = 1.35;
+        const tableX0 = -5.4;
+        const tableX1 = 5.4;
+        const recessW = recessDims.width;
+        const recessD = recessDims.depth;
+        const rx0 = -recessW / 2;
+        const rx1 = recessW / 2;
+        const rz0 = -recessD / 2;
+        const rz1 = recessD / 2;
+        const recessDrop = recessDims.height;
+        const recessBottomY = -recessDrop;
+        const recessDimensionY = 0.018;
+        const recessLengthDimensionZ = rz1 + 0.16;
+        const recessWidthDimensionX = rx0 - 0.18;
+
+        addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 2.8, tableBack), v(tableX0, 2.8, tableBack)], material(COLORS.background));
+        if (hasRecess) {
+          addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 0, rz0), v(tableX0, 0, rz0)], material(0xffffff));
+          addQuad(group, [v(tableX0, 0, rz1), v(tableX1, 0, rz1), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(0xffffff));
+          addQuad(group, [v(tableX0, 0, rz0), v(rx0, 0, rz0), v(rx0, 0, rz1), v(tableX0, 0, rz1)], material(0xffffff));
+          addQuad(group, [v(rx1, 0, rz0), v(tableX1, 0, rz0), v(tableX1, 0, rz1), v(rx1, 0, rz1)], material(0xffffff));
+
+          addQuad(group, [v(rx0, recessBottomY, rz0), v(rx1, recessBottomY, rz0), v(rx1, recessBottomY, rz1), v(rx0, recessBottomY, rz1)], material(COLORS.leftSide, 0.84));
+          addQuad(group, [v(rx0, 0, rz0), v(rx1, 0, rz0), v(rx1, recessBottomY, rz0), v(rx0, recessBottomY, rz0)], material(COLORS.recessSide, 0.34));
+          addQuad(group, [v(rx0, recessBottomY, rz1), v(rx1, recessBottomY, rz1), v(rx1, 0, rz1), v(rx0, 0, rz1)], material(COLORS.recessSide, 0.5));
+          addQuad(group, [v(rx0, 0, rz0), v(rx0, recessBottomY, rz0), v(rx0, recessBottomY, rz1), v(rx0, 0, rz1)], material(COLORS.recessFloor, 0.42));
+          addQuad(group, [v(rx1, recessBottomY, rz0), v(rx1, 0, rz0), v(rx1, 0, rz1), v(rx1, recessBottomY, rz1)], material(COLORS.recessFloor, 0.42));
+        } else {
+          addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(0xffffff));
+        }
+        addQuad(group, [v(tableX0, -0.16, tableFront), v(tableX1, -0.16, tableFront), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(COLORS.recessSide, 0.72));
+        const tableLines = [
+          [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack)],
+          [v(tableX0, 0, tableFront), v(tableX1, 0, tableFront)],
+          [v(tableX0, -0.16, tableFront), v(tableX1, -0.16, tableFront)]
+        ];
+        if (hasRecess) {
+          tableLines.push(
+            [v(tableX0, 0, rz0), v(tableX1, 0, rz0)],
+            [v(tableX0, 0, rz1), v(tableX1, 0, rz1)],
+            [v(rx0, 0, tableBack), v(rx0, 0, tableFront)],
+            [v(rx1, 0, tableBack), v(rx1, 0, tableFront)]
+          );
+        }
+        addSegments(group, tableLines, lineMaterials.wall);
+
+        if (hasRecess) {
+          addSegments(
+            group,
+            [
+              [v(rx0, 0, rz0), v(rx1, 0, rz0)],
+              [v(rx1, 0, rz0), v(rx1, 0, rz1)],
+              [v(rx1, 0, rz1), v(rx0, 0, rz1)],
+              [v(rx0, 0, rz1), v(rx0, 0, rz0)],
+              [v(rx0, recessBottomY, rz0), v(rx1, recessBottomY, rz0)],
+              [v(rx1, recessBottomY, rz0), v(rx1, recessBottomY, rz1)],
+              [v(rx1, recessBottomY, rz1), v(rx0, recessBottomY, rz1)],
+              [v(rx0, recessBottomY, rz1), v(rx0, recessBottomY, rz0)],
+              [v(rx0, 0, rz0), v(rx0, recessBottomY, rz0)],
+              [v(rx1, 0, rz0), v(rx1, recessBottomY, rz0)],
+              [v(rx1, 0, rz1), v(rx1, recessBottomY, rz1)],
+              [v(rx0, 0, rz1), v(rx0, recessBottomY, rz1)]
+            ],
+            lineMaterials.wall
+          );
+        }
+        addCuboid(group, x0, x1, objectY0, objectY1, z0, z1, {
+          front: material(COLORS.applianceSide),
+          side: material(COLORS.leftSide),
+          top: material(COLORS.applianceFront),
+          bottom: material(COLORS.leftTop)
+        });
+        addQuad(group, [v(x0 + w * 0.05, objectY1 + 0.004, z0 + d * 0.08), v(x1 - w * 0.05, objectY1 + 0.004, z0 + d * 0.08), v(x1 - w * 0.12, objectY1 + 0.004, z1 - d * 0.12), v(x0 + w * 0.12, objectY1 + 0.004, z1 - d * 0.12)], material(0xffffff, 0.18));
+        addSegments(
+          group,
+          [
+            [v(x0, objectY0, z1), v(x1, objectY0, z1)],
+            [v(x0, objectY1, z1), v(x1, objectY1, z1)],
+            [v(x0, objectY0, z1), v(x0, objectY1, z1)],
+            [v(x1, objectY0, z1), v(x1, objectY1, z1)],
+            [v(x0, objectY0, z0), v(x0, objectY1, z0)],
+            [v(x1, objectY0, z0), v(x1, objectY1, z0)],
+            [v(x0, objectY0, z0), v(x1, objectY0, z0)],
+            [v(x0, objectY0, z1), v(x0, objectY0, z0)],
+            [v(x1, objectY0, z1), v(x1, objectY0, z0)],
+            [v(x1, objectY1, z1), v(x1, objectY1, z0)],
+            [v(x0, objectY1, z1), v(x0, objectY1, z0)],
+            [v(x0, objectY1, z0), v(x1, objectY1, z0)],
+          ],
+          lineMaterials.edge
+        );
+
+        const sideView = Math.abs(state.cameraYaw) >= 8;
+        if (sideView) {
+          const sideSign = state.cameraYaw >= 0 ? 1 : -1;
+          const sideX = sideSign > 0 ? x1 + 0.18 : x0 - 0.18;
+          const sideTick = sideSign > 0 ? vectorX : vectorX.clone().multiplyScalar(-1);
+          addDimension(group, v(x0, objectY0 - 0.11, z1 + 0.08), v(x1, objectY0 - 0.11, z1 + 0.08), vectorZ, 0.14);
+          addDimension(group, v(sideX, objectY0 - 0.02, z0), v(sideX, objectY0 - 0.02, z1), sideTick, 0.14);
+          addDimension(group, v(sideX, objectY0, z0 + 0.035), v(sideX, objectY1, z0 + 0.035), sideTick, 0.12);
+        } else {
+          addDimension(group, v(x0, objectY1 + 0.16, z0 - d * 0.08), v(x1, objectY1 + 0.16, z0 - d * 0.08), vectorY, 0.14);
+          addDimension(group, v(x0 - 0.18, objectY1 + 0.025, z0), v(x0 - 0.18, objectY1 + 0.025, z1), vectorX, 0.14);
+          addDimension(group, v(x1 + 0.16, objectY0, z1 + 0.025), v(x1 + 0.16, objectY1, z1 + 0.025), vectorX, 0.12);
+        }
+        if (hasRecess) {
+          const recessWidthDimensionSideX = sideView ? rx1 + 0.18 : recessWidthDimensionX;
+          addDimension(group, v(rx0, recessDimensionY, recessLengthDimensionZ), v(rx1, recessDimensionY, recessLengthDimensionZ), vectorZ, 0.12);
+          addDimension(group, v(recessWidthDimensionSideX, recessDimensionY, rz0), v(recessWidthDimensionSideX, recessDimensionY, rz1), vectorX, 0.12);
+        }
+      }
+
+      function rebuild() {
+        clearRoot();
+
+        const dims = {
+          width: state.width,
+          height: state.height,
+          depth: state.depth
+        };
+        if (state.layoutMode === "tabletop") {
+          addTabletopScene(root, dims);
+          render();
+          return;
+        }
+
+        const hasRecess = state.showRecess === "true";
+        const leftX = hasRecess ? -(state.gap / 2 + state.width / 2) : 0;
+        const recessDims = getRecessDims(dims);
+        const recessCenterX = state.gap / 2 + recessDims.width / 2;
+        const recessOpening = hasRecess
+          ? {
+              x0: recessCenterX - recessDims.width / 2,
+              x1: recessCenterX + recessDims.width / 2,
+              y0: 0,
+              y1: recessDims.height
+            }
+          : null;
+
+        addWallAndFloor(root, recessOpening);
+        addLeftBlock(root, leftX, dims);
+        if (hasRecess) {
+          addRightRecess(root, recessCenterX, recessDims);
+        }
+        render();
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.round(rect.width));
+        const height = Math.max(1, Math.round(rect.height));
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        render();
+      }
+
+      function render() {
+        renderer.render(scene, camera);
+      }
+
+      function syncControlVisibility() {
+        document.querySelector("#showRecessField").classList.toggle("is-hidden", false);
+        document.querySelector("#cameraYawField").classList.toggle("is-hidden", false);
+        document.querySelector("#cameraPitchField").classList.toggle("is-hidden", false);
+      }
+
+      function syncOutputRatio() {
+        const ratioMap = {
+          "3:2": { css: "3 / 2", value: 1.5 },
+          "4:3": { css: "4 / 3", value: 4 / 3 },
+          "16:9": { css: "16 / 9", value: 16 / 9 }
+        };
+        const ratio = ratioMap[state.outputRatio] || ratioMap["3:2"];
+        document.documentElement.style.setProperty("--sheet-ratio", ratio.css);
+        document.documentElement.style.setProperty("--sheet-ratio-value", String(ratio.value));
+        document.querySelectorAll("[data-output-ratio]").forEach((button) => {
+          button.classList.toggle("is-active", button.dataset.outputRatio === state.outputRatio);
+        });
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function roundControlValue(value) {
+        return Math.round(value * 100) / 100;
+      }
+
+      function getControlRange(key) {
+        const control = document.querySelector(`input[data-key="${key}"][type="number"]`);
+        return {
+          min: Number(control?.min ?? 0),
+          max: Number(control?.max ?? Number.POSITIVE_INFINITY)
+        };
+      }
+
+      function syncInputsForKey(key) {
+        const inputs = document.querySelectorAll(`[data-key="${key}"]`);
+        for (const input of inputs) {
+          if (input.type === "checkbox") {
+            input.checked = state[key] === "true";
+          } else {
+            input.value = state[key];
+          }
+        }
+      }
+
+      function setCameraControl(key, value) {
+        const range = getControlRange(key);
+        const nextValue = roundControlValue(clamp(value, range.min, range.max));
+        if (state[key] === nextValue) return;
+        state[key] = nextValue;
+        syncInputsForKey(key);
+        updateCamera();
+        if (state.layoutMode === "tabletop" && key === "cameraYaw") {
+          rebuild();
+        } else {
+          render();
+        }
+      }
+
+      function syncAspectRatioFromDimensions() {
+        const { primary, secondary } = getAspectRatioKeys();
+        if (state[secondary] <= 0) return;
+        state.aspectRatio = roundControlValue(state[primary] / state[secondary]);
+        syncInputsForKey("aspectRatio");
+      }
+
+      function getAspectRatioKeys() {
+        return state.layoutMode === "tabletop" ? { primary: "width", secondary: "depth" } : { primary: "width", secondary: "height" };
+      }
+
+      function applyLockedAspectRatio(changedKey) {
+        const ratio = Number(state.aspectRatio);
+        if (!Number.isFinite(ratio) || ratio <= 0) return;
+        const { primary, secondary } = getAspectRatioKeys();
+        const primaryRange = getControlRange(primary);
+        const secondaryRange = getControlRange(secondary);
+        if (changedKey === secondary) {
+          const nextPrimary = roundControlValue(clamp(state[secondary] * ratio, primaryRange.min, primaryRange.max));
+          state[primary] = nextPrimary;
+          state[secondary] = roundControlValue(clamp(nextPrimary / ratio, secondaryRange.min, secondaryRange.max));
+        } else {
+          const nextSecondary = roundControlValue(clamp(state[primary] / ratio, secondaryRange.min, secondaryRange.max));
+          state[secondary] = nextSecondary;
+          state[primary] = roundControlValue(clamp(nextSecondary * ratio, primaryRange.min, primaryRange.max));
+        }
+        syncInputsForKey(primary);
+        syncInputsForKey(secondary);
+      }
+
+      function syncLayoutLabels() {
+        const isTabletop = state.layoutMode === "tabletop";
+        document.querySelector('label[for="widthRange"]').textContent = isTabletop ? "长" : "宽";
+        document.querySelector('label[for="depthRange"]').textContent = isTabletop ? "宽" : "深";
+        document.querySelector('label[for="aspectRatioNumber"]').textContent = isTabletop ? "长宽比" : "宽高比";
+      }
+
+      function syncDimensionFieldOrder() {
+        const group = document.querySelector("#showRecessField").parentElement;
+        const orderedIds = state.layoutMode === "tabletop"
+          ? ["showRecessField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "depthField", "heightField"]
+          : ["showRecessField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "heightField", "depthField"];
+        for (const id of orderedIds) {
+          group.appendChild(document.querySelector(`#${id}`));
+        }
+      }
+
+      function syncLayoutControls() {
+        const isTabletop = state.layoutMode === "tabletop";
+        syncLayoutLabels();
+        syncDimensionFieldOrder();
+        const widthRange = {
+          min: isTabletop ? "0.3" : "0.3",
+          max: isTabletop ? "5.2" : "5.2",
+          step: "0.01"
+        };
+        for (const input of [document.querySelector("#widthRange"), document.querySelector("#widthNumber")]) {
+          input.min = widthRange.min;
+          input.max = widthRange.max;
+          input.step = widthRange.step;
+        }
+        const heightRange = {
+          min: isTabletop ? "0.08" : "0.3",
+          max: isTabletop ? "1.2" : "4.8",
+          step: isTabletop ? "0.01" : "0.01"
+        };
+        for (const input of [document.querySelector("#heightRange"), document.querySelector("#heightNumber")]) {
+          input.min = heightRange.min;
+          input.max = heightRange.max;
+          input.step = heightRange.step;
+        }
+        const depthRange = {
+          min: isTabletop ? "0.3" : "0.45",
+          max: isTabletop ? "3.2" : "1.35",
+          step: "0.01"
+        };
+        for (const input of [document.querySelector("#depthRange"), document.querySelector("#depthNumber")]) {
+          input.min = depthRange.min;
+          input.max = depthRange.max;
+          input.step = depthRange.step;
+        }
+        const distanceRange = {
+          min: isTabletop ? "3.8" : "5.8",
+          max: isTabletop ? "9.5" : "12.5",
+          step: "0.01"
+        };
+        for (const input of [document.querySelector("#cameraDistanceRange"), document.querySelector("#cameraDistanceNumber")]) {
+          input.min = distanceRange.min;
+          input.max = distanceRange.max;
+          input.step = distanceRange.step;
+        }
+        const yawRange = {
+          min: isTabletop ? "-45" : "-18",
+          max: isTabletop ? "45" : "18",
+          step: "0.1"
+        };
+        for (const input of [document.querySelector("#cameraYawRange"), document.querySelector("#cameraYawNumber")]) {
+          input.min = yawRange.min;
+          input.max = yawRange.max;
+          input.step = yawRange.step;
+        }
+        const pitchRange = {
+          min: isTabletop ? "8" : "-18",
+          max: isTabletop ? "36" : "24",
+          step: "0.1"
+        };
+        for (const input of [document.querySelector("#cameraPitchRange"), document.querySelector("#cameraPitchNumber")]) {
+          input.min = pitchRange.min;
+          input.max = pitchRange.max;
+          input.step = pitchRange.step;
+        }
+        const panXRange = {
+          min: isTabletop ? "-2.8" : "-2.8",
+          max: isTabletop ? "2.8" : "2.8",
+          step: "0.01"
+        };
+        for (const input of [document.querySelector("#cameraPanXRange"), document.querySelector("#cameraPanXNumber")]) {
+          input.min = panXRange.min;
+          input.max = panXRange.max;
+          input.step = panXRange.step;
+        }
+        const gapRange = {
+          min: isTabletop ? "0.04" : "1.0",
+          max: isTabletop ? "0.9" : "2.6",
+          step: "0.01"
+        };
+        for (const input of [document.querySelector("#gapRange"), document.querySelector("#gapNumber")]) {
+          input.min = gapRange.min;
+          input.max = gapRange.max;
+          input.step = gapRange.step;
+        }
+      }
+
+      function applyLayoutPreset(layoutMode) {
+        if (layoutMode === "tabletop") {
+          if (state.height > 1.2) state.height = 0.28;
+          if (state.width < 2.2) state.width = 2.6;
+          if (state.depth < 1.05) state.depth = 1.1;
+          if (state.gap > 0.9 || state.gap < 0.04) state.gap = 0.58;
+          state.cameraDistance = 5.2;
+          state.cameraYaw = 0;
+          state.cameraPitch = 23;
+          state.cameraPanX = 0;
+          state.cameraPanY = -0.04;
+        } else {
+          if (state.height < 2.4) state.height = 3.45;
+          if (state.gap < 1.0) state.gap = 1.82;
+          state.cameraDistance = 8.88;
+          state.cameraYaw = 0;
+          state.cameraPitch = 0;
+          state.cameraPanX = 0;
+          state.cameraPanY = 0;
+        }
+      }
+
+      function getRecessDims(dims) {
+        const scaleMap = {
+          larger: { width: 1.08, height: 1.06, depth: 1.08 },
+          same: { width: 1, height: 1, depth: 1 },
+          smaller: { width: 0.94, height: 0.96, depth: 0.94 }
+        };
+        const scale = scaleMap[state.recessFit] || scaleMap.same;
+        return {
+          width: dims.width * scale.width,
+          height: dims.height * scale.height,
+          depth: dims.depth * scale.depth
+        };
+      }
+
+      function colorToHex(color) {
+        return `#${color.toString(16).padStart(6, "0")}`.toUpperCase();
+      }
+
+      function parseHexColor(value) {
+        const match = String(value).trim().match(/^#?([0-9a-f]{6})$/i);
+        if (!match) return null;
+        return Number.parseInt(match[1], 16);
+      }
+
+      function syncColorControls() {
+        const controls = document.querySelectorAll("[data-color-key]");
+        for (const control of controls) {
+          const value = colorToHex(COLORS[control.dataset.colorKey]);
+          control.value = value;
+        }
+      }
+
+      function applyColor(key, value) {
+        const parsed = parseHexColor(value);
+        if (parsed === null || !(key in COLORS)) return;
+        COLORS[key] = parsed;
+        lineMaterials.wall.color.setHex(COLORS.wallLine);
+        lineMaterials.soft.color.setHex(COLORS.wallLineSoft);
+        lineMaterials.edge.color.setHex(COLORS.objectEdge);
+        lineMaterials.applianceDetail.color.setHex(COLORS.applianceDetail);
+        lineMaterials.applianceGroove.color.setHex(COLORS.applianceGroove);
+        lineMaterials.dimension.color.setHex(COLORS.dimension);
+        for (const [sourceMaterial, strokeMaterial] of segmentStrokeMaterials) {
+          strokeMaterial.color.copy(sourceMaterial.color);
+          strokeMaterial.opacity = sourceMaterial.opacity;
+          strokeMaterial.needsUpdate = true;
+        }
+        syncColorControls();
+        rebuild();
+      }
+
+      function cloneState() {
+        const copy = {};
+        for (const key of variantKeys) {
+          copy[key] = state[key];
+        }
+        return copy;
+      }
+
+      function clearVariants() {
+        variants.fill(null);
+        activeVariantIndex = 0;
+        renderVariantDock();
+      }
+
+      async function saveVariant(index) {
+        activeVariantIndex = index;
+        await waitFrame();
+        render();
+        variants[index] = {
+          state: cloneState(),
+          thumbnail: canvas.toDataURL("image/png")
+        };
+        renderVariantDock();
+      }
+
+      function applyVariant(index) {
+        const variant = variants[index];
+        if (!variant) {
+          activeVariantIndex = index;
+          renderVariantDock();
+          return;
+        }
+        for (const key of variantKeys) {
+          state[key] = variant.state[key];
+        }
+        activeVariantIndex = index;
+        syncOutputRatio();
+        syncLayoutControls();
+        syncInputsToState();
+        syncControlVisibility();
+        updateCamera();
+        resize();
+        rebuild();
+        renderVariantDock();
+      }
+
+      function syncInputsToState() {
+        const inputs = document.querySelectorAll("input[data-key], select[data-key]");
+        for (const input of inputs) {
+          if (input.type === "checkbox") {
+            input.checked = state[input.dataset.key] === "true";
+          } else {
+            input.value = state[input.dataset.key];
+          }
+        }
+      }
+
+      function waitFrame() {
+        return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      }
+
+      function renderVariantDock() {
+        const dock = document.querySelector("#variantDock");
+        dock.innerHTML = "";
+        variants.forEach((variant, index) => {
+          const card = document.createElement("button");
+          card.className = `variant-card${index === activeVariantIndex ? " is-active" : ""}`;
+          card.type = "button";
+          card.title = variant ? `切换到方案 ${index + 1}` : `创建方案 ${index + 1}`;
+          card.dataset.variantIndex = String(index);
+          if (variant && variant.thumbnail) {
+            const image = document.createElement("img");
+            image.alt = `方案 ${index + 1} 预览`;
+            image.src = variant.thumbnail;
+            card.appendChild(image);
+          } else {
+            const empty = document.createElement("div");
+            empty.className = "variant-empty";
+            empty.textContent = "+";
+            card.appendChild(empty);
+          }
+          const label = document.createElement("div");
+          label.className = "variant-label";
+          label.textContent = `方案 ${index + 1}`;
+          card.appendChild(label);
+          const saveButton = document.createElement("button");
+          saveButton.className = "variant-save";
+          saveButton.type = "button";
+          saveButton.textContent = "保存";
+          saveButton.addEventListener("click", (event) => {
+            event.stopPropagation();
+            saveVariant(index);
+          });
+          card.appendChild(saveButton);
+          card.addEventListener("click", () => applyVariant(index));
+          dock.appendChild(card);
+        });
+      }
+
+      function downloadCanvas(filename) {
+        return new Promise((resolve) => {
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              resolve();
+              return;
+            }
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => {
+              URL.revokeObjectURL(url);
+              resolve();
+            }, 120);
+          }, "image/png");
+        });
+      }
+
+      async function exportVariant(index) {
+        if (!variants[index]) return;
+        const restoreIndex = activeVariantIndex;
+        applyVariant(index);
+        await waitFrame();
+        render();
+        await downloadCanvas(`size-diagram-${String(index + 1).padStart(2, "0")}.png`);
+        applyVariant(restoreIndex);
+      }
+
+      async function exportAllVariants() {
+        const restoreIndex = activeVariantIndex;
+        for (let i = 0; i < variants.length; i += 1) {
+          if (!variants[i]) continue;
+          applyVariant(i);
+          await waitFrame();
+          render();
+          await downloadCanvas(`size-diagram-${String(i + 1).padStart(2, "0")}.png`);
+        }
+        applyVariant(restoreIndex);
+      }
+
+      function bindControls() {
+        const inputs = document.querySelectorAll("input[data-key], select[data-key]");
+        for (const input of inputs) {
+          if (input.type === "checkbox") {
+            input.checked = state[input.dataset.key] === "true";
+          } else {
+            input.value = state[input.dataset.key];
+          }
+          const eventName = input.tagName === "SELECT" || input.type === "checkbox" || input.dataset.key === "aspectRatio" ? "change" : "input";
+          input.addEventListener(eventName, () => {
+            const key = input.dataset.key;
+            const isNumeric = input.type === "range" || input.type === "number";
+            let value = input.type === "checkbox" ? String(input.checked) : isNumeric ? Number(input.value) : input.value;
+            if (isNumeric && !Number.isFinite(value)) return;
+            if (key === "aspectRatio") {
+              value = Number(String(value).trim().replace("，", "."));
+              if (!Number.isFinite(value)) {
+                syncInputsForKey("aspectRatio");
+                return;
+              }
+              value = roundControlValue(clamp(value, 0.1, 8));
+            }
+            const previousValue = state[key];
+            state[key] = value;
+            if (key === "layoutMode" && previousValue !== value) {
+              applyLayoutPreset(value);
+              syncLayoutControls();
+              if (state.lockAspectRatio === "true") {
+                applyLockedAspectRatio("width");
+              } else {
+                syncAspectRatioFromDimensions();
+              }
+              syncInputsToState();
+              clearVariants();
+            } else if (key === "aspectRatio") {
+              state.lockAspectRatio = "true";
+              syncInputsForKey("lockAspectRatio");
+              applyLockedAspectRatio("width");
+              syncInputsForKey("aspectRatio");
+            } else if (key === "lockAspectRatio") {
+              if (value === "true") {
+                syncAspectRatioFromDimensions();
+              }
+            } else if (Object.values(getAspectRatioKeys()).includes(key)) {
+              state[key] = roundControlValue(state[key]);
+              if (state.lockAspectRatio === "true") {
+                applyLockedAspectRatio(key);
+              } else {
+                syncAspectRatioFromDimensions();
+              }
+            } else if (key === "outputRatio") {
+              syncOutputRatio();
+              resize();
+            }
+            syncControlVisibility();
+            for (const peer of inputs) {
+              if (peer === input || peer.dataset.key !== key) continue;
+              if (peer.type === "checkbox") {
+                peer.checked = state[key] === "true";
+              } else {
+                peer.value = state[key];
+              }
+            }
+            if (key === "layoutMode") {
+              updateCamera();
+              rebuild();
+            } else if (key === "cameraDistance" || key === "cameraYaw" || key === "cameraPitch" || key === "cameraPanX" || key === "cameraPanY") {
+              updateCamera();
+              if (state.layoutMode === "tabletop" && key === "cameraYaw") {
+                rebuild();
+              } else {
+                render();
+              }
+            } else {
+              rebuild();
+            }
+          });
+        }
+
+        bindViewportCameraControls();
+
+        document.querySelector("#togglePanel").addEventListener("click", () => {
+          document.querySelector("#panel").classList.toggle("collapsed");
+        });
+
+        document.querySelector("#exportCurrent").addEventListener("click", () => {
+          exportVariant(activeVariantIndex);
+        });
+
+        document.querySelector("#exportAll").addEventListener("click", () => {
+          exportAllVariants();
+        });
+
+        document.querySelectorAll("[data-output-ratio]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.outputRatio = button.dataset.outputRatio;
+            syncOutputRatio();
+            resize();
+            renderVariantDock();
+          });
+        });
+
+        document.querySelectorAll("[data-color-key]").forEach((input) => {
+          input.addEventListener("input", () => {
+            applyColor(input.dataset.colorKey, input.value);
+          });
+          input.addEventListener("change", () => {
+            applyColor(input.dataset.colorKey, input.value);
+          });
+        });
+      }
+
+      function bindViewportCameraControls() {
+        const sheet = document.querySelector(".drawing-sheet");
+        const dragState = {
+          active: false,
+          x: 0,
+          y: 0
+        };
+        sheet.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0) return;
+          dragState.active = true;
+          dragState.x = event.clientX;
+          dragState.y = event.clientY;
+          sheet.classList.add("is-dragging");
+          sheet.setPointerCapture(event.pointerId);
+        });
+        sheet.addEventListener("pointermove", (event) => {
+          if (!dragState.active) return;
+          const dx = event.clientX - dragState.x;
+          const dy = event.clientY - dragState.y;
+          dragState.x = event.clientX;
+          dragState.y = event.clientY;
+          const yawDelta = dx * 0.08;
+          setCameraControl("cameraYaw", state.cameraYaw + (state.layoutMode === "tabletop" ? -yawDelta : yawDelta));
+          setCameraControl("cameraPitch", state.cameraPitch + dy * 0.08);
+        });
+        const endDrag = (event) => {
+          if (!dragState.active) return;
+          dragState.active = false;
+          sheet.classList.remove("is-dragging");
+          if (sheet.hasPointerCapture(event.pointerId)) {
+            sheet.releasePointerCapture(event.pointerId);
+          }
+        };
+        sheet.addEventListener("pointerup", endDrag);
+        sheet.addEventListener("pointercancel", endDrag);
+        sheet.addEventListener(
+          "wheel",
+          (event) => {
+            event.preventDefault();
+            setCameraControl("cameraDistance", state.cameraDistance + event.deltaY * 0.006);
+          },
+          { passive: false }
+        );
+      }
+
+      window.addEventListener("resize", resize);
+      bindControls();
+      syncColorControls();
+      syncOutputRatio();
+      syncLayoutControls();
+      syncControlVisibility();
+      renderVariantDock();
+      resize();
+      rebuild();
+
+      window.perspectiveBlocks = {
+        state,
+        rebuild,
+        updateCamera,
+        textureCache,
+        colors: COLORS
+      };
+    </script>
+  </body>
+</html>
