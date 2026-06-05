@@ -713,6 +713,11 @@
               <input id="dimensionColorText" data-color-key="dimension" type="text" />
             </div>
             <div class="color-field">
+              <label for="backgroundPlaneColorText">背景立面</label>
+              <input id="backgroundPlaneColorPicker" data-color-key="backgroundPlane" type="color" />
+              <input id="backgroundPlaneColorText" data-color-key="backgroundPlane" type="text" />
+            </div>
+            <div class="color-field">
               <label for="wallLineColorText">墙线颜色</label>
               <input id="wallLineColorPicker" data-color-key="wallLine" type="color" />
               <input id="wallLineColorText" data-color-key="wallLine" type="text" />
@@ -759,6 +764,7 @@
     <script>
       const COLORS = {
         background: 0xffffff,
+        backgroundPlane: 0xffffff,
         wallLine: 0x9fa3a7,
         wallLineSoft: 0xc9cbd0,
         objectEdge: 0x1f2428,
@@ -1178,12 +1184,13 @@
         const xMax = 16;
         const yMax = 12;
         const z = -0.002;
+        addWallBackground(group, xMin, xMax, yMax, z - 0.003, recessOpening);
         const verticalLines = recessOpening
           ? createRecessAlignedVerticalLines(recessOpening)
-          : WALL_VERTICAL_LINES;
+          : createDistributedLines(-7.5, 7.5, 6);
         const horizontalLines = recessOpening
           ? createRecessAlignedHorizontalLines(recessOpening)
-          : WALL_HORIZONTAL_LINES;
+          : createDistributedLines(0, 7.2, 4).slice(1);
 
         for (const x of verticalLines) {
           if (recessOpening && x > recessOpening.x0 && x < recessOpening.x1) {
@@ -1204,6 +1211,17 @@
 
         wallLines.push([v(xMin, 0, 0), v(xMax, 0, 0)]);
         addSegments(group, wallLines, lineMaterials.wall);
+      }
+
+      function addWallBackground(group, xMin, xMax, yMax, z, recessOpening) {
+        const fill = material(COLORS.backgroundPlane);
+        if (!recessOpening) {
+          addQuad(group, [v(xMin, 0, z), v(xMax, 0, z), v(xMax, yMax, z), v(xMin, yMax, z)], fill);
+          return;
+        }
+        addQuad(group, [v(xMin, 0, z), v(recessOpening.x0, 0, z), v(recessOpening.x0, yMax, z), v(xMin, yMax, z)], fill);
+        addQuad(group, [v(recessOpening.x1, 0, z), v(xMax, 0, z), v(xMax, yMax, z), v(recessOpening.x1, yMax, z)], fill);
+        addQuad(group, [v(recessOpening.x0, recessOpening.y1, z), v(recessOpening.x1, recessOpening.y1, z), v(recessOpening.x1, yMax, z), v(recessOpening.x0, yMax, z)], fill);
       }
 
       function createDistributedLines(start, end, count) {
@@ -1730,7 +1748,7 @@
         const recessLengthDimensionZ = rz1 + 0.16;
         const recessWidthDimensionX = rx0 - 0.18;
 
-        addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 2.8, tableBack), v(tableX0, 2.8, tableBack)], material(COLORS.background));
+        addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 2.8, tableBack), v(tableX0, 2.8, tableBack)], material(COLORS.backgroundPlane));
         if (hasRecess) {
           addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 0, rz0), v(tableX0, 0, rz0)], material(0xffffff));
           addQuad(group, [v(tableX0, 0, rz1), v(tableX1, 0, rz1), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(0xffffff));
@@ -1812,9 +1830,10 @@
           const sideSign = state.cameraYaw >= 0 ? 1 : -1;
           const sideX = sideSign > 0 ? x1 + 0.18 : x0 - 0.18;
           const sideTick = sideSign > 0 ? vectorX : vectorX.clone().multiplyScalar(-1);
-          addDimension(group, v(x0, objectY0 - 0.11, z1 + 0.08), v(x1, objectY0 - 0.11, z1 + 0.08), vectorZ, 0.14);
-          addDimension(group, v(sideX, objectY0 - 0.02, z0), v(sideX, objectY0 - 0.02, z1), sideTick, 0.14);
-          addDimension(group, v(sideX, objectY0, z0 + 0.035), v(sideX, objectY1, z0 + 0.035), sideTick, 0.12);
+          const sideDimensionZ = z0 + 0.06;
+          addDimension(group, v(x0, objectY0, z1 + 0.16), v(x1, objectY0, z1 + 0.16), vectorZ, 0.14);
+          addDimension(group, v(sideX, objectY0, sideDimensionZ), v(sideX, objectY0, z1 + 0.06), sideTick, 0.14);
+          addDimension(group, v(sideX, objectY0, sideDimensionZ), v(sideX, objectY1, sideDimensionZ), sideTick, 0.12);
         } else {
           addDimension(group, v(x0, objectY1 + 0.16, z0 - d * 0.08), v(x1, objectY1 + 0.16, z0 - d * 0.08), vectorY, 0.14);
           addDimension(group, v(x0 - 0.18, objectY1 + 0.025, z0), v(x0 - 0.18, objectY1 + 0.025, z1), vectorX, 0.14);

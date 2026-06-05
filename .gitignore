@@ -11,3 +11,6 @@ desktop.ini
 
 # Node (if added later)
 node_modules/
+
+# Tools
+.playwright-mcp/
