@@ -1744,6 +1744,7 @@
         const rz1 = recessD / 2;
         const recessDrop = recessDims.height;
         const recessBottomY = -recessDrop;
+        const tableApronBottomY = hasRecess ? Math.min(-0.16, recessBottomY - 0.02) : -0.16;
         const recessDimensionY = 0.018;
         const recessLengthDimensionZ = rz1 + 0.16;
         const recessWidthDimensionX = rx0 - 0.18;
@@ -1763,11 +1764,11 @@
         } else {
           addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(0xffffff));
         }
-        addQuad(group, [v(tableX0, -0.16, tableFront), v(tableX1, -0.16, tableFront), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(COLORS.recessSide, 0.72));
+        addQuad(group, [v(tableX0, tableApronBottomY, tableFront), v(tableX1, tableApronBottomY, tableFront), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(COLORS.recessSide));
         const tableLines = [
           [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack)],
           [v(tableX0, 0, tableFront), v(tableX1, 0, tableFront)],
-          [v(tableX0, -0.16, tableFront), v(tableX1, -0.16, tableFront)]
+          [v(tableX0, tableApronBottomY, tableFront), v(tableX1, tableApronBottomY, tableFront)]
         ];
         if (hasRecess) {
           tableLines.push(
