@@ -51,7 +51,7 @@
         display: flex;
         flex-direction: column;
         gap: 18px;
-        width: min(100%, 1480px);
+        width: min(100%, 1800px);
         min-height: calc(100vh - 48px);
         margin: 0 auto;
       }
@@ -86,7 +86,7 @@
       .workspace {
         flex: 1;
         display: grid;
-        grid-template-columns: 340px minmax(0, 1fr);
+        grid-template-columns: 340px minmax(0, 1fr) 300px;
         align-items: stretch;
         gap: 16px;
         min-height: 620px;
@@ -133,6 +133,83 @@
         width: 100%;
         height: 100%;
         background: #ffffff;
+      }
+
+      .sticker-overlay {
+        position: absolute;
+        z-index: 5;
+        left: 50%;
+        top: 15%;
+        width: 20%;
+        height: auto;
+        transform: translate(-50%, -50%);
+        cursor: move;
+        user-select: none;
+        -webkit-user-drag: none;
+        touch-action: none;
+      }
+
+      .sticker-overlay.is-hidden {
+        display: none;
+      }
+
+      .text-overlay {
+        position: absolute;
+        z-index: 6;
+        left: 50%;
+        top: 50%;
+        max-width: 90%;
+        transform: translate(-50%, -50%);
+        color: #111111;
+        font-family: "FZLanTingHeiS-R-GB", "方正兰亭黑简体", sans-serif;
+        font-weight: 400;
+        line-height: 1.25;
+        letter-spacing: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        cursor: move;
+        user-select: none;
+        touch-action: none;
+      }
+
+      .text-overlay.is-selected {
+        outline: 1px dashed rgba(255, 97, 77, 0.9);
+        outline-offset: 4px;
+      }
+
+      .text-editor-field {
+        align-items: start;
+      }
+
+      .text-editor {
+        grid-column: 2 / -1;
+        min-height: 66px;
+        padding: 8px 10px;
+        border: 1px solid var(--panel-border);
+        border-radius: 7px;
+        background: #ffffff;
+        color: var(--ink);
+        font-family: "FZLanTingHeiS-R-GB", "方正兰亭黑简体", sans-serif;
+        font-size: 12px;
+        line-height: 1.4;
+        resize: vertical;
+      }
+
+      .file-button {
+        grid-column: 2 / -1;
+        display: grid;
+        place-items: center;
+        height: 32px;
+        border: 1px solid var(--panel-border);
+        border-radius: 7px;
+        background: #ffffff;
+        color: #1d1d1f;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .file-button input {
+        display: none;
       }
 
       .variant-dock {
@@ -222,6 +299,71 @@
         gap: 8px;
       }
 
+      .overlay-tools {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .tools-pane {
+        min-width: 0;
+        height: 100%;
+        padding: 16px;
+        border: 1px solid var(--separator);
+        border-radius: 8px;
+        background: var(--surface);
+        overflow: auto;
+        box-shadow: var(--shadow);
+      }
+
+      .tools-pane-title {
+        margin: 0 0 12px;
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 670;
+      }
+
+      .tools-pane .overlay-tool {
+        min-width: 0;
+        padding: 16px 0;
+        border: 0;
+        border-top: 1px solid var(--separator);
+        border-radius: 0;
+        background: transparent;
+      }
+
+      .tools-pane .overlay-tool:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .overlay-tool .group-title {
+        margin-bottom: 10px;
+      }
+
+      .overlay-tool .field {
+        grid-template-columns: 70px minmax(0, 1fr) 58px;
+        gap: 8px;
+        min-height: 34px;
+      }
+
+      .overlay-tool .field + .field {
+        margin-top: 8px;
+      }
+
+      .overlay-tool input[type="number"] {
+        width: 58px;
+      }
+
+      .overlay-tool .button-row {
+        margin-top: 8px;
+      }
+
+      .overlay-tool .text-editor {
+        min-height: 66px;
+        max-height: 120px;
+      }
+
       .ratio-tabs {
         display: inline-flex;
         align-items: center;
@@ -249,6 +391,18 @@
         background: #ffffff;
         color: var(--ink);
         box-shadow: 0 1px 3px rgba(29, 29, 31, 0.1);
+      }
+
+      .dimension-layout-tabs {
+        grid-column: 2 / -1;
+        display: flex;
+        width: 100%;
+      }
+
+      .dimension-layout-tabs .ratio-tab {
+        min-width: 0;
+        flex: 1;
+        padding: 0 6px;
       }
 
       .panel {
@@ -573,7 +727,7 @@
         display: none;
       }
 
-      @media (max-width: 960px) {
+      @media (max-width: 1180px) {
         .app-header {
           align-items: flex-start;
         }
@@ -591,6 +745,10 @@
 
         .preview-pane {
           min-height: 460px;
+        }
+
+        .tools-pane {
+          height: auto;
         }
       }
 
@@ -645,16 +803,24 @@
               <label for="showRecessCheckbox">是否带有凹槽</label>
               <input id="showRecessCheckbox" data-key="showRecess" type="checkbox" />
             </div>
+            <div class="field" id="dimensionLayoutField">
+              <label>标注位置</label>
+              <div class="ratio-tabs dimension-layout-tabs" aria-label="标注线位置">
+                <button class="ratio-tab" type="button" data-dimension-layout="auto">自动</button>
+                <button class="ratio-tab" type="button" data-dimension-layout="front">第一版</button>
+                <button class="ratio-tab" type="button" data-dimension-layout="top">第二版</button>
+              </div>
+            </div>
             <div class="subsection-title" id="dimensionSectionTitle">立方体尺寸</div>
             <div class="field" id="widthField">
               <label for="widthRange">宽</label>
-              <input id="widthRange" data-key="width" type="range" min="0.3" max="5.2" step="0.01" />
-              <input id="widthNumber" data-key="width" type="number" min="0.3" max="5.2" step="0.01" />
+              <input id="widthRange" data-key="width" type="range" min="0.3" max="10.4" step="0.01" />
+              <input id="widthNumber" data-key="width" type="number" min="0.3" max="10.4" step="0.01" />
             </div>
             <div class="field" id="heightField">
               <label for="heightRange">高</label>
-              <input id="heightRange" data-key="height" type="range" min="0.3" max="4.8" step="0.01" />
-              <input id="heightNumber" data-key="height" type="number" min="0.3" max="4.8" step="0.01" />
+              <input id="heightRange" data-key="height" type="range" min="0.3" max="9.6" step="0.01" />
+              <input id="heightNumber" data-key="height" type="number" min="0.3" max="9.6" step="0.01" />
             </div>
             <div class="field" id="aspectRatioField">
               <label for="aspectRatioNumber">宽高比</label>
@@ -666,13 +832,13 @@
             </div>
             <div class="field" id="depthField">
               <label for="depthRange">深</label>
-              <input id="depthRange" data-key="depth" type="range" min="0.45" max="1.35" step="0.01" />
-              <input id="depthNumber" data-key="depth" type="number" min="0.45" max="1.35" step="0.01" />
+              <input id="depthRange" data-key="depth" type="range" min="0.45" max="2.7" step="0.01" />
+              <input id="depthNumber" data-key="depth" type="number" min="0.45" max="2.7" step="0.01" />
             </div>
             <div class="field">
               <label for="gapRange">间距</label>
-              <input id="gapRange" data-key="gap" type="range" min="1.0" max="2.6" step="0.01" />
-              <input id="gapNumber" data-key="gap" type="number" min="1.0" max="2.6" step="0.01" />
+              <input id="gapRange" data-key="gap" type="range" min="1.0" max="5.2" step="0.01" />
+              <input id="gapNumber" data-key="gap" type="number" min="1.0" max="5.2" step="0.01" />
             </div>
           </div>
 
@@ -680,28 +846,33 @@
             <div class="group-title">相机</div>
             <div class="field">
               <label for="cameraDistanceRange">镜距</label>
-              <input id="cameraDistanceRange" data-key="cameraDistance" type="range" min="5.8" max="12.5" step="0.01" />
-              <input id="cameraDistanceNumber" data-key="cameraDistance" type="number" min="5.8" max="12.5" step="0.01" />
+              <input id="cameraDistanceRange" data-key="cameraDistance" type="range" min="5.8" max="25" step="0.01" />
+              <input id="cameraDistanceNumber" data-key="cameraDistance" type="number" min="5.8" max="25" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="cameraFovRange">透视</label>
+              <input id="cameraFovRange" data-key="cameraFov" type="range" min="10" max="60" step="0.1" />
+              <input id="cameraFovNumber" data-key="cameraFov" type="number" min="10" max="60" step="0.1" />
             </div>
             <div class="field" id="cameraYawField">
               <label for="cameraYawRange">水平角</label>
-              <input id="cameraYawRange" data-key="cameraYaw" type="range" min="-18" max="18" step="0.1" />
-              <input id="cameraYawNumber" data-key="cameraYaw" type="number" min="-18" max="18" step="0.1" />
+              <input id="cameraYawRange" data-key="cameraYaw" type="range" min="-36" max="36" step="0.1" />
+              <input id="cameraYawNumber" data-key="cameraYaw" type="number" min="-36" max="36" step="0.1" />
             </div>
             <div class="field" id="cameraPitchField">
               <label for="cameraPitchRange">垂直角</label>
-              <input id="cameraPitchRange" data-key="cameraPitch" type="range" min="8" max="36" step="0.1" />
-              <input id="cameraPitchNumber" data-key="cameraPitch" type="number" min="8" max="36" step="0.1" />
+              <input id="cameraPitchRange" data-key="cameraPitch" type="range" min="8" max="72" step="0.1" />
+              <input id="cameraPitchNumber" data-key="cameraPitch" type="number" min="8" max="72" step="0.1" />
             </div>
             <div class="field">
               <label for="cameraPanXRange">左右</label>
-              <input id="cameraPanXRange" data-key="cameraPanX" type="range" min="-1.8" max="1.8" step="0.01" />
-              <input id="cameraPanXNumber" data-key="cameraPanX" type="number" min="-1.8" max="1.8" step="0.01" />
+              <input id="cameraPanXRange" data-key="cameraPanX" type="range" min="-3.6" max="3.6" step="0.01" />
+              <input id="cameraPanXNumber" data-key="cameraPanX" type="number" min="-3.6" max="3.6" step="0.01" />
             </div>
             <div class="field">
               <label for="cameraPanYRange">上下</label>
-              <input id="cameraPanYRange" data-key="cameraPanY" type="range" min="-1.8" max="1.8" step="0.01" />
-              <input id="cameraPanYNumber" data-key="cameraPanY" type="number" min="-1.8" max="1.8" step="0.01" />
+              <input id="cameraPanYRange" data-key="cameraPanY" type="range" min="-3.6" max="3.6" step="0.01" />
+              <input id="cameraPanYNumber" data-key="cameraPanY" type="number" min="-3.6" max="3.6" step="0.01" />
             </div>
           </div>
 
@@ -750,6 +921,8 @@
           </div>
           <div class="drawing-sheet">
             <canvas id="scene" aria-label="墙面凸出与凹入体块的三维尺寸线稿"></canvas>
+            <img class="sticker-overlay is-hidden" id="stickerOverlay" alt="PNG 贴片" draggable="false" />
+            <div id="textOverlayLayer"></div>
           </div>
           <div class="variant-dock" id="variantDock" aria-label="方案预览"></div>
           <div class="variant-actions">
@@ -757,6 +930,48 @@
             <button class="text-button" id="exportAll" type="button">导出全部</button>
           </div>
         </section>
+
+        <aside class="tools-pane">
+          <h2 class="tools-pane-title">叠加工具</h2>
+          <div class="overlay-tools">
+            <section class="control-group overlay-tool">
+              <div class="group-title">贴片</div>
+              <div class="field">
+                <label>PNG 图片</label>
+                <label class="file-button">
+                  上传贴片
+                  <input id="stickerUpload" type="file" accept="image/png" />
+                </label>
+              </div>
+              <div class="field">
+                <label for="stickerScaleRange">贴片大小</label>
+                <input id="stickerScaleRange" data-key="stickerScale" type="range" min="0.05" max="0.8" step="0.01" />
+                <input id="stickerScaleNumber" data-key="stickerScale" type="number" min="0.05" max="0.8" step="0.01" />
+              </div>
+              <div class="button-row">
+                <button class="text-button" id="centerSticker" type="button">居中贴片</button>
+                <button class="text-button" id="removeSticker" type="button">删除贴片</button>
+              </div>
+            </section>
+
+            <section class="control-group overlay-tool">
+              <div class="group-title">文字</div>
+              <div class="field text-editor-field">
+                <label for="textEditor">文字内容</label>
+                <textarea class="text-editor" id="textEditor" placeholder="选择或添加一个文本框"></textarea>
+              </div>
+              <div class="field">
+                <label for="textFontSizeRange">字号</label>
+                <input id="textFontSizeRange" type="range" min="12" max="120" step="1" />
+                <input id="textFontSizeNumber" type="number" min="12" max="120" step="1" />
+              </div>
+              <div class="button-row">
+                <button class="text-button" id="addTextItem" type="button">添加文字</button>
+                <button class="text-button" id="removeTextItem" type="button">删除文字</button>
+              </div>
+            </section>
+          </div>
+        </aside>
       </main>
     </div>
 
@@ -787,6 +1002,7 @@
         layoutMode: "wall",
         outputRatio: "3:2",
         showRecess: "true",
+        dimensionLayout: "auto",
         recessFit: "larger",
         skuFrontUrl: "./assets/fridge-front-sku.png",
         skuSideUrl: "./assets/fridge-side-texture-a.png",
@@ -797,16 +1013,26 @@
         depth: 0.78,
         gap: 1.82,
         cameraDistance: 8.88,
+        cameraFov: 32,
         cameraYaw: 0,
         cameraPitch: 0,
         cameraPanX: 0,
-        cameraPanY: 0
+        cameraPanY: 0,
+        stickerSrc: "",
+        stickerX: 0.5,
+        stickerY: 0.15,
+        stickerScale: 0.2,
+        textItems: []
       };
       const variantKeys = Object.keys(state);
       let activeVariantIndex = 0;
       const variants = Array.from({ length: 6 }, () => null);
+      let selectedTextId = null;
+      let textItemSequence = 0;
 
       const canvas = document.querySelector("#scene");
+      const stickerOverlay = document.querySelector("#stickerOverlay");
+      const textOverlayLayer = document.querySelector("#textOverlayLayer");
       const renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
@@ -829,6 +1055,8 @@
       const cameraBaseAngle = Math.atan2(defaultCameraOffset.z, defaultCameraOffset.x);
 
       function updateCamera() {
+        camera.fov = state.cameraFov;
+        camera.updateProjectionMatrix();
         if (state.layoutMode === "tabletop") {
           const yaw = THREE.MathUtils.degToRad(state.cameraYaw);
           const pitch = THREE.MathUtils.degToRad(state.cameraPitch);
@@ -1290,9 +1518,22 @@
         ];
         addSegments(group, edges, lineMaterials.edge);
 
-        addDimension(group, v(x0 - 0.16, y0, z1 + 0.03), v(x0 - 0.16, y1, z1 + 0.03), vectorX, 0.14);
-        addDimension(group, v(x0, y1 + 0.16, z1 + 0.02), v(x1, y1 + 0.16, z1 + 0.02), vectorY, 0.14);
-        addDimension(group, v(x1 + 0.16, y0, z0), v(x1 + 0.16, y0, z1), vectorX, 0.14);
+        const topViewDimensions =
+          state.showRecess !== "true" &&
+          (state.dimensionLayout === "top" || (state.dimensionLayout === "auto" && state.cameraPitch >= 8));
+        if (topViewDimensions) {
+          const widthZ = z1 + 0.18;
+          const sideX = x1 + 0.14;
+          const heightX = sideX;
+          const heightZ = z0 + 0.02;
+          addDimension(group, v(x0, y0, widthZ), v(x1, y0, widthZ), vectorZ, 0.14);
+          addDimension(group, v(sideX, y0, z1), v(sideX, y0, heightZ), vectorX, 0.14);
+          addDimension(group, v(heightX, y0, heightZ), v(heightX, y1, heightZ), vectorX, 0.14);
+        } else {
+          addDimension(group, v(x0 - 0.16, y0, z1 + 0.03), v(x0 - 0.16, y1, z1 + 0.03), vectorX, 0.14);
+          addDimension(group, v(x0, y1 + 0.16, z1 + 0.02), v(x1, y1 + 0.16, z1 + 0.02), vectorY, 0.14);
+          addDimension(group, v(x1 + 0.16, y0, z0), v(x1 + 0.16, y0, z1), vectorX, 0.14);
+        }
       }
 
       function getProductTemplate(category) {
@@ -1896,8 +2137,65 @@
         renderer.render(scene, camera);
       }
 
+      function syncStickerOverlay() {
+        const hasSticker = Boolean(state.stickerSrc);
+        stickerOverlay.classList.toggle("is-hidden", !hasSticker);
+        if (!hasSticker) {
+          stickerOverlay.removeAttribute("src");
+          return;
+        }
+        if (stickerOverlay.src !== state.stickerSrc) {
+          stickerOverlay.src = state.stickerSrc;
+        }
+        stickerOverlay.style.left = `${state.stickerX * 100}%`;
+        stickerOverlay.style.top = `${state.stickerY * 100}%`;
+        stickerOverlay.style.width = `${state.stickerScale * 100}%`;
+      }
+
+      function getSelectedTextItem() {
+        return state.textItems.find((item) => item.id === selectedTextId) || null;
+      }
+
+      function syncTextControls() {
+        const item = getSelectedTextItem();
+        const editor = document.querySelector("#textEditor");
+        const sizeRange = document.querySelector("#textFontSizeRange");
+        const sizeNumber = document.querySelector("#textFontSizeNumber");
+        editor.disabled = !item;
+        sizeRange.disabled = !item;
+        sizeNumber.disabled = !item;
+        editor.value = item?.text || "";
+        sizeRange.value = item?.fontSize || 32;
+        sizeNumber.value = item?.fontSize || 32;
+      }
+
+      function syncTextOverlays() {
+        textOverlayLayer.innerHTML = "";
+        for (const item of state.textItems) {
+          const element = document.createElement("div");
+          element.className = `text-overlay${item.id === selectedTextId ? " is-selected" : ""}`;
+          element.dataset.textId = item.id;
+          element.textContent = item.text || " ";
+          element.style.left = `${item.x * 100}%`;
+          element.style.top = `${item.y * 100}%`;
+          element.style.fontSize = `${item.fontSize}px`;
+          textOverlayLayer.appendChild(element);
+        }
+        syncTextControls();
+      }
+
+      function selectTextItem(id) {
+        selectedTextId = state.textItems.some((item) => item.id === id) ? id : null;
+        syncTextOverlays();
+      }
+
       function syncControlVisibility() {
         document.querySelector("#showRecessField").classList.toggle("is-hidden", false);
+        const showDimensionLayout = state.layoutMode === "wall" && state.showRecess !== "true";
+        document.querySelector("#dimensionLayoutField").classList.toggle("is-hidden", !showDimensionLayout);
+        document.querySelectorAll("[data-dimension-layout]").forEach((button) => {
+          button.classList.toggle("is-active", button.dataset.dimensionLayout === state.dimensionLayout);
+        });
         document.querySelector("#cameraYawField").classList.toggle("is-hidden", false);
         document.querySelector("#cameraPitchField").classList.toggle("is-hidden", false);
       }
@@ -1950,7 +2248,7 @@
         state[key] = nextValue;
         syncInputsForKey(key);
         updateCamera();
-        if (state.layoutMode === "tabletop" && key === "cameraYaw") {
+        if ((state.layoutMode === "tabletop" && key === "cameraYaw") || (state.layoutMode === "wall" && key === "cameraPitch")) {
           rebuild();
         } else {
           render();
@@ -1997,8 +2295,8 @@
       function syncDimensionFieldOrder() {
         const group = document.querySelector("#showRecessField").parentElement;
         const orderedIds = state.layoutMode === "tabletop"
-          ? ["showRecessField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "depthField", "heightField"]
-          : ["showRecessField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "heightField", "depthField"];
+          ? ["showRecessField", "dimensionLayoutField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "depthField", "heightField"]
+          : ["showRecessField", "dimensionLayoutField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "heightField", "depthField"];
         for (const id of orderedIds) {
           group.appendChild(document.querySelector(`#${id}`));
         }
@@ -2010,7 +2308,7 @@
         syncDimensionFieldOrder();
         const widthRange = {
           min: isTabletop ? "0.3" : "0.3",
-          max: isTabletop ? "5.2" : "5.2",
+          max: isTabletop ? "10.4" : "10.4",
           step: "0.01"
         };
         for (const input of [document.querySelector("#widthRange"), document.querySelector("#widthNumber")]) {
@@ -2020,7 +2318,7 @@
         }
         const heightRange = {
           min: isTabletop ? "0.08" : "0.3",
-          max: isTabletop ? "1.2" : "4.8",
+          max: isTabletop ? "2.4" : "9.6",
           step: isTabletop ? "0.01" : "0.01"
         };
         for (const input of [document.querySelector("#heightRange"), document.querySelector("#heightNumber")]) {
@@ -2030,7 +2328,7 @@
         }
         const depthRange = {
           min: isTabletop ? "0.3" : "0.45",
-          max: isTabletop ? "3.2" : "1.35",
+          max: isTabletop ? "6.4" : "2.7",
           step: "0.01"
         };
         for (const input of [document.querySelector("#depthRange"), document.querySelector("#depthNumber")]) {
@@ -2040,7 +2338,7 @@
         }
         const distanceRange = {
           min: isTabletop ? "3.8" : "5.8",
-          max: isTabletop ? "9.5" : "12.5",
+          max: isTabletop ? "19" : "25",
           step: "0.01"
         };
         for (const input of [document.querySelector("#cameraDistanceRange"), document.querySelector("#cameraDistanceNumber")]) {
@@ -2048,9 +2346,19 @@
           input.max = distanceRange.max;
           input.step = distanceRange.step;
         }
+        const fovRange = {
+          min: "10",
+          max: "60",
+          step: "0.1"
+        };
+        for (const input of [document.querySelector("#cameraFovRange"), document.querySelector("#cameraFovNumber")]) {
+          input.min = fovRange.min;
+          input.max = fovRange.max;
+          input.step = fovRange.step;
+        }
         const yawRange = {
-          min: isTabletop ? "-45" : "-18",
-          max: isTabletop ? "45" : "18",
+          min: isTabletop ? "-90" : "-36",
+          max: isTabletop ? "90" : "36",
           step: "0.1"
         };
         for (const input of [document.querySelector("#cameraYawRange"), document.querySelector("#cameraYawNumber")]) {
@@ -2059,8 +2367,8 @@
           input.step = yawRange.step;
         }
         const pitchRange = {
-          min: isTabletop ? "8" : "-18",
-          max: isTabletop ? "36" : "24",
+          min: isTabletop ? "8" : "-36",
+          max: isTabletop ? "72" : "48",
           step: "0.1"
         };
         for (const input of [document.querySelector("#cameraPitchRange"), document.querySelector("#cameraPitchNumber")]) {
@@ -2069,8 +2377,8 @@
           input.step = pitchRange.step;
         }
         const panXRange = {
-          min: isTabletop ? "-2.8" : "-2.8",
-          max: isTabletop ? "2.8" : "2.8",
+          min: isTabletop ? "-5.6" : "-5.6",
+          max: isTabletop ? "5.6" : "5.6",
           step: "0.01"
         };
         for (const input of [document.querySelector("#cameraPanXRange"), document.querySelector("#cameraPanXNumber")]) {
@@ -2078,9 +2386,19 @@
           input.max = panXRange.max;
           input.step = panXRange.step;
         }
+        const panYRange = {
+          min: isTabletop ? "-5.6" : "-5.6",
+          max: isTabletop ? "5.6" : "5.6",
+          step: "0.01"
+        };
+        for (const input of [document.querySelector("#cameraPanYRange"), document.querySelector("#cameraPanYNumber")]) {
+          input.min = panYRange.min;
+          input.max = panYRange.max;
+          input.step = panYRange.step;
+        }
         const gapRange = {
           min: isTabletop ? "0.04" : "1.0",
-          max: isTabletop ? "0.9" : "2.6",
+          max: isTabletop ? "1.8" : "5.2",
           step: "0.01"
         };
         for (const input of [document.querySelector("#gapRange"), document.querySelector("#gapNumber")]) {
@@ -2166,7 +2484,9 @@
       function cloneState() {
         const copy = {};
         for (const key of variantKeys) {
-          copy[key] = state[key];
+          copy[key] = Array.isArray(state[key])
+            ? state[key].map((item) => ({ ...item }))
+            : state[key];
         }
         return copy;
       }
@@ -2179,11 +2499,13 @@
 
       async function saveVariant(index) {
         activeVariantIndex = index;
+        await waitStickerReady();
+        await waitTextFontReady();
         await waitFrame();
         render();
         variants[index] = {
           state: cloneState(),
-          thumbnail: canvas.toDataURL("image/png")
+          thumbnail: createCompositeCanvas().toDataURL("image/png")
         };
         renderVariantDock();
       }
@@ -2196,13 +2518,18 @@
           return;
         }
         for (const key of variantKeys) {
-          state[key] = variant.state[key];
+          state[key] = Array.isArray(variant.state[key])
+            ? variant.state[key].map((item) => ({ ...item }))
+            : variant.state[key];
         }
+        selectedTextId = state.textItems[0]?.id || null;
         activeVariantIndex = index;
         syncOutputRatio();
         syncLayoutControls();
         syncInputsToState();
         syncControlVisibility();
+        syncStickerOverlay();
+        syncTextOverlays();
         updateCamera();
         resize();
         rebuild();
@@ -2222,6 +2549,56 @@
 
       function waitFrame() {
         return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      }
+
+      function waitStickerReady() {
+        if (!state.stickerSrc || (stickerOverlay.complete && stickerOverlay.naturalWidth > 0)) {
+          return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+          stickerOverlay.addEventListener("load", resolve, { once: true });
+          stickerOverlay.addEventListener("error", resolve, { once: true });
+        });
+      }
+
+      function waitTextFontReady() {
+        if (!document.fonts?.load) return Promise.resolve();
+        return document.fonts.load('36px "FZLanTingHeiS-R-GB", "方正兰亭黑简体"');
+      }
+
+      function createCompositeCanvas() {
+        const output = document.createElement("canvas");
+        output.width = canvas.width;
+        output.height = canvas.height;
+        const context = output.getContext("2d");
+        context.drawImage(canvas, 0, 0);
+        if (state.stickerSrc && stickerOverlay.complete && stickerOverlay.naturalWidth > 0) {
+          const stickerWidth = output.width * state.stickerScale;
+          const stickerHeight = stickerWidth * (stickerOverlay.naturalHeight / stickerOverlay.naturalWidth);
+          const stickerLeft = output.width * state.stickerX - stickerWidth / 2;
+          const stickerTop = output.height * state.stickerY - stickerHeight / 2;
+          context.drawImage(stickerOverlay, stickerLeft, stickerTop, stickerWidth, stickerHeight);
+        }
+        const sheet = document.querySelector(".drawing-sheet");
+        const previewWidth = Math.max(1, sheet.getBoundingClientRect().width);
+        const exportScale = output.width / previewWidth;
+        context.fillStyle = "#111111";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        for (const item of state.textItems) {
+          const fontSize = item.fontSize * exportScale;
+          const lineHeight = fontSize * 1.25;
+          const lines = String(item.text || "").split("\n");
+          const blockHeight = lineHeight * Math.max(1, lines.length);
+          const centerX = output.width * item.x;
+          const centerY = output.height * item.y;
+          context.font = `${fontSize}px "FZLanTingHeiS-R-GB", "方正兰亭黑简体", sans-serif`;
+          lines.forEach((line, index) => {
+            const lineY = centerY - blockHeight / 2 + lineHeight * (index + 0.5);
+            context.fillText(line, centerX, lineY);
+          });
+        }
+        return output;
       }
 
       function renderVariantDock() {
@@ -2264,7 +2641,7 @@
 
       function downloadCanvas(filename) {
         return new Promise((resolve) => {
-          canvas.toBlob((blob) => {
+          createCompositeCanvas().toBlob((blob) => {
             if (!blob) {
               resolve();
               return;
@@ -2288,6 +2665,8 @@
         if (!variants[index]) return;
         const restoreIndex = activeVariantIndex;
         applyVariant(index);
+        await waitStickerReady();
+        await waitTextFontReady();
         await waitFrame();
         render();
         await downloadCanvas(`size-diagram-${String(index + 1).padStart(2, "0")}.png`);
@@ -2299,6 +2678,8 @@
         for (let i = 0; i < variants.length; i += 1) {
           if (!variants[i]) continue;
           applyVariant(i);
+          await waitStickerReady();
+          await waitTextFontReady();
           await waitFrame();
           render();
           await downloadCanvas(`size-diagram-${String(i + 1).padStart(2, "0")}.png`);
@@ -2359,6 +2740,8 @@
             } else if (key === "outputRatio") {
               syncOutputRatio();
               resize();
+            } else if (key === "stickerScale") {
+              syncStickerOverlay();
             }
             syncControlVisibility();
             for (const peer of inputs) {
@@ -2372,9 +2755,12 @@
             if (key === "layoutMode") {
               updateCamera();
               rebuild();
-            } else if (key === "cameraDistance" || key === "cameraYaw" || key === "cameraPitch" || key === "cameraPanX" || key === "cameraPanY") {
+            } else if (key === "stickerScale") {
+              syncStickerOverlay();
+              renderVariantDock();
+            } else if (key === "cameraDistance" || key === "cameraFov" || key === "cameraYaw" || key === "cameraPitch" || key === "cameraPanX" || key === "cameraPanY") {
               updateCamera();
-              if (state.layoutMode === "tabletop" && key === "cameraYaw") {
+              if ((state.layoutMode === "tabletop" && key === "cameraYaw") || (state.layoutMode === "wall" && key === "cameraPitch")) {
                 rebuild();
               } else {
                 render();
@@ -2386,6 +2772,8 @@
         }
 
         bindViewportCameraControls();
+        bindStickerControls();
+        bindTextControls();
 
         document.querySelector("#togglePanel").addEventListener("click", () => {
           document.querySelector("#panel").classList.toggle("collapsed");
@@ -2408,6 +2796,14 @@
           });
         });
 
+        document.querySelectorAll("[data-dimension-layout]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.dimensionLayout = button.dataset.dimensionLayout;
+            syncControlVisibility();
+            rebuild();
+          });
+        });
+
         document.querySelectorAll("[data-color-key]").forEach((input) => {
           input.addEventListener("input", () => {
             applyColor(input.dataset.colorKey, input.value);
@@ -2426,6 +2822,7 @@
           y: 0
         };
         sheet.addEventListener("pointerdown", (event) => {
+          if (event.target === stickerOverlay || event.target.closest(".text-overlay")) return;
           if (event.button !== 0) return;
           dragState.active = true;
           dragState.x = event.clientX;
@@ -2463,12 +2860,172 @@
         );
       }
 
+      function bindStickerControls() {
+        const sheet = document.querySelector(".drawing-sheet");
+        const upload = document.querySelector("#stickerUpload");
+        upload.addEventListener("change", () => {
+          const file = upload.files?.[0];
+          if (!file) return;
+          if (file.type !== "image/png") {
+            upload.value = "";
+            return;
+          }
+          const reader = new FileReader();
+          reader.addEventListener("load", () => {
+            state.stickerSrc = String(reader.result || "");
+            state.stickerX = 0.5;
+            state.stickerY = 0.15;
+            syncStickerOverlay();
+          });
+          reader.readAsDataURL(file);
+        });
+
+        document.querySelector("#centerSticker").addEventListener("click", () => {
+          state.stickerX = 0.5;
+          state.stickerY = 0.15;
+          syncStickerOverlay();
+        });
+
+        document.querySelector("#removeSticker").addEventListener("click", () => {
+          state.stickerSrc = "";
+          upload.value = "";
+          syncStickerOverlay();
+        });
+
+        const drag = { active: false, pointerId: null };
+        stickerOverlay.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0) return;
+          event.stopPropagation();
+          drag.active = true;
+          drag.pointerId = event.pointerId;
+          stickerOverlay.setPointerCapture(event.pointerId);
+        });
+        stickerOverlay.addEventListener("pointermove", (event) => {
+          if (!drag.active || event.pointerId !== drag.pointerId) return;
+          event.stopPropagation();
+          const rect = sheet.getBoundingClientRect();
+          state.stickerX = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+          state.stickerY = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+          syncStickerOverlay();
+        });
+        const endStickerDrag = (event) => {
+          if (!drag.active || event.pointerId !== drag.pointerId) return;
+          event.stopPropagation();
+          drag.active = false;
+          if (stickerOverlay.hasPointerCapture(event.pointerId)) {
+            stickerOverlay.releasePointerCapture(event.pointerId);
+          }
+        };
+        stickerOverlay.addEventListener("pointerup", endStickerDrag);
+        stickerOverlay.addEventListener("pointercancel", endStickerDrag);
+      }
+
+      function bindTextControls() {
+        const sheet = document.querySelector(".drawing-sheet");
+        const editor = document.querySelector("#textEditor");
+        const sizeRange = document.querySelector("#textFontSizeRange");
+        const sizeNumber = document.querySelector("#textFontSizeNumber");
+
+        document.querySelector("#addTextItem").addEventListener("click", () => {
+          textItemSequence += 1;
+          const offset = (state.textItems.length % 5) * 0.04;
+          const item = {
+            id: `text-${Date.now().toString(36)}-${textItemSequence}`,
+            text: "请输入文字",
+            x: 0.5 + offset,
+            y: 0.2 + offset,
+          fontSize: 32
+          };
+          state.textItems.push(item);
+          selectedTextId = item.id;
+          syncTextOverlays();
+          editor.focus();
+          editor.select();
+        });
+
+        document.querySelector("#removeTextItem").addEventListener("click", () => {
+          if (!selectedTextId) return;
+          state.textItems = state.textItems.filter((item) => item.id !== selectedTextId);
+          selectedTextId = state.textItems[0]?.id || null;
+          syncTextOverlays();
+        });
+
+        editor.addEventListener("input", () => {
+          const item = getSelectedTextItem();
+          if (!item) return;
+          item.text = editor.value;
+          const overlay = Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === item.id);
+          if (overlay) overlay.textContent = item.text || " ";
+        });
+
+        const updateFontSize = (value) => {
+          const item = getSelectedTextItem();
+          if (!item) return;
+          item.fontSize = clamp(Number(value) || 32, 12, 120);
+          sizeRange.value = item.fontSize;
+          sizeNumber.value = item.fontSize;
+          const overlay = Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === item.id);
+          if (overlay) overlay.style.fontSize = `${item.fontSize}px`;
+        };
+        sizeRange.addEventListener("input", () => updateFontSize(sizeRange.value));
+        sizeNumber.addEventListener("input", () => updateFontSize(sizeNumber.value));
+
+        const drag = { active: false, id: null, pointerId: null, element: null };
+        textOverlayLayer.addEventListener("pointerdown", (event) => {
+          const target = event.target.closest(".text-overlay");
+          if (!target || event.button !== 0) return;
+          event.stopPropagation();
+          selectedTextId = target.dataset.textId;
+          Array.from(textOverlayLayer.children).forEach((element) => {
+            element.classList.toggle("is-selected", element.dataset.textId === selectedTextId);
+          });
+          syncTextControls();
+          drag.active = true;
+          drag.id = selectedTextId;
+          drag.pointerId = event.pointerId;
+          drag.element = target;
+          target.setPointerCapture(event.pointerId);
+        });
+        textOverlayLayer.addEventListener("pointermove", (event) => {
+          if (!drag.active || event.pointerId !== drag.pointerId) return;
+          event.stopPropagation();
+          const item = state.textItems.find((entry) => entry.id === drag.id);
+          if (!item) return;
+          const rect = sheet.getBoundingClientRect();
+          item.x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+          item.y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+          drag.element.style.left = `${item.x * 100}%`;
+          drag.element.style.top = `${item.y * 100}%`;
+        });
+        const endTextDrag = (event) => {
+          if (!drag.active || event.pointerId !== drag.pointerId) return;
+          event.stopPropagation();
+          if (drag.element?.hasPointerCapture(event.pointerId)) {
+            drag.element.releasePointerCapture(event.pointerId);
+          }
+          drag.active = false;
+          drag.id = null;
+          drag.element = null;
+        };
+        textOverlayLayer.addEventListener("pointerup", endTextDrag);
+        textOverlayLayer.addEventListener("pointercancel", endTextDrag);
+        textOverlayLayer.addEventListener("dblclick", (event) => {
+          const target = event.target.closest(".text-overlay");
+          if (!target) return;
+          selectTextItem(target.dataset.textId);
+          editor.focus();
+          editor.select();
+        });
+      }
+
       window.addEventListener("resize", resize);
       bindControls();
       syncColorControls();
       syncOutputRatio();
       syncLayoutControls();
       syncControlVisibility();
+      syncStickerOverlay();
+      syncTextOverlays();
       renderVariantDock();
       resize();
       rebuild();
