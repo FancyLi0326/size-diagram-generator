@@ -811,6 +811,25 @@
                 <button class="ratio-tab" type="button" data-dimension-layout="top">第二版</button>
               </div>
             </div>
+            <div class="field" id="groundOutlineField">
+              <label for="groundOutlineCheckbox">底部虚线范围</label>
+              <input id="groundOutlineCheckbox" data-key="showGroundOutline" type="checkbox" />
+            </div>
+            <div class="field" id="groundOutlineSizeField">
+              <label for="groundOutlineSizeRange">范围大小</label>
+              <input id="groundOutlineSizeRange" data-key="groundOutlineSize" type="range" min="0.05" max="2" step="0.01" />
+              <input id="groundOutlineSizeNumber" data-key="groundOutlineSize" type="number" min="0.05" max="2" step="0.01" />
+            </div>
+            <div class="field" id="groundOutlineXField">
+              <label for="groundOutlineXRange">左右位置</label>
+              <input id="groundOutlineXRange" data-key="groundOutlineX" type="range" min="-3" max="3" step="0.01" />
+              <input id="groundOutlineXNumber" data-key="groundOutlineX" type="number" min="-3" max="3" step="0.01" />
+            </div>
+            <div class="field" id="groundOutlineZField">
+              <label for="groundOutlineZRange">前后位置</label>
+              <input id="groundOutlineZRange" data-key="groundOutlineZ" type="range" min="-3" max="3" step="0.01" />
+              <input id="groundOutlineZNumber" data-key="groundOutlineZ" type="number" min="-3" max="3" step="0.01" />
+            </div>
             <div class="subsection-title" id="dimensionSectionTitle">立方体尺寸</div>
             <div class="field" id="widthField">
               <label for="widthRange">宽</label>
@@ -1003,6 +1022,10 @@
         outputRatio: "3:2",
         showRecess: "true",
         dimensionLayout: "auto",
+        showGroundOutline: "false",
+        groundOutlineSize: 0.36,
+        groundOutlineX: 0,
+        groundOutlineZ: 0,
         recessFit: "larger",
         skuFrontUrl: "./assets/fridge-front-sku.png",
         skuSideUrl: "./assets/fridge-side-texture-a.png",
@@ -1029,6 +1052,11 @@
       const variants = Array.from({ length: 6 }, () => null);
       let selectedTextId = null;
       let textItemSequence = 0;
+      let persistenceReady = false;
+      let persistenceTimer = null;
+      const WORKSPACE_DB_NAME = "size-diagram-generator";
+      const WORKSPACE_STORE_NAME = "workspace";
+      const WORKSPACE_RECORD_KEY = "current";
 
       const canvas = document.querySelector("#scene");
       const stickerOverlay = document.querySelector("#stickerOverlay");
@@ -1320,6 +1348,37 @@
         }
       }
 
+      function addDashedSegment(group, start, end, lineMaterial, dashLength = 0.12, gapLength = 0.08) {
+        const direction = end.clone().sub(start);
+        const length = direction.length();
+        if (length <= 0.0001) return;
+        direction.normalize();
+        for (let offset = 0; offset < length; offset += dashLength + gapLength) {
+          const dashEnd = Math.min(offset + dashLength, length);
+          addStrokeSegment(
+            group,
+            start.clone().addScaledVector(direction, offset),
+            start.clone().addScaledVector(direction, dashEnd),
+            lineMaterial
+          );
+        }
+      }
+
+      function addGroundOutline(group, x0, x1, z0, z1) {
+        const margin = state.groundOutlineSize;
+        const offsetX = state.groundOutlineX;
+        const offsetZ = state.groundOutlineZ;
+        const y = 0.012;
+        const outerX0 = x0 - margin + offsetX;
+        const outerX1 = x1 + margin + offsetX;
+        const outerZ0 = z0 - margin + offsetZ;
+        const outerZ1 = z1 + margin + offsetZ;
+        addDashedSegment(group, v(outerX0, y, outerZ0), v(outerX1, y, outerZ0), lineMaterials.dimension);
+        addDashedSegment(group, v(outerX1, y, outerZ0), v(outerX1, y, outerZ1), lineMaterials.dimension);
+        addDashedSegment(group, v(outerX1, y, outerZ1), v(outerX0, y, outerZ1), lineMaterials.dimension);
+        addDashedSegment(group, v(outerX0, y, outerZ1), v(outerX0, y, outerZ0), lineMaterials.dimension);
+      }
+
       function addCircle(group, center, radius, lineMaterial, segments = 48) {
         const pairs = [];
         for (let i = 0; i < segments; i += 1) {
@@ -1517,6 +1576,9 @@
           [v(x0, y1, z0), v(x1, y1, z0)]
         ];
         addSegments(group, edges, lineMaterials.edge);
+        if (state.showGroundOutline === "true") {
+          addGroundOutline(group, x0, x1, z0, z1);
+        }
 
         const topViewDimensions =
           state.showRecess !== "true" &&
@@ -2135,6 +2197,7 @@
 
       function render() {
         renderer.render(scene, camera);
+        scheduleWorkspaceSave();
       }
 
       function syncStickerOverlay() {
@@ -2142,6 +2205,7 @@
         stickerOverlay.classList.toggle("is-hidden", !hasSticker);
         if (!hasSticker) {
           stickerOverlay.removeAttribute("src");
+          scheduleWorkspaceSave();
           return;
         }
         if (stickerOverlay.src !== state.stickerSrc) {
@@ -2150,6 +2214,7 @@
         stickerOverlay.style.left = `${state.stickerX * 100}%`;
         stickerOverlay.style.top = `${state.stickerY * 100}%`;
         stickerOverlay.style.width = `${state.stickerScale * 100}%`;
+        scheduleWorkspaceSave();
       }
 
       function getSelectedTextItem() {
@@ -2182,6 +2247,7 @@
           textOverlayLayer.appendChild(element);
         }
         syncTextControls();
+        scheduleWorkspaceSave();
       }
 
       function selectTextItem(id) {
@@ -2193,6 +2259,12 @@
         document.querySelector("#showRecessField").classList.toggle("is-hidden", false);
         const showDimensionLayout = state.layoutMode === "wall" && state.showRecess !== "true";
         document.querySelector("#dimensionLayoutField").classList.toggle("is-hidden", !showDimensionLayout);
+        const showGroundOutlineControls = state.layoutMode === "wall";
+        const showGroundOutlineAdjustments = showGroundOutlineControls && state.showGroundOutline === "true";
+        document.querySelector("#groundOutlineField").classList.toggle("is-hidden", !showGroundOutlineControls);
+        document.querySelector("#groundOutlineSizeField").classList.toggle("is-hidden", !showGroundOutlineAdjustments);
+        document.querySelector("#groundOutlineXField").classList.toggle("is-hidden", !showGroundOutlineAdjustments);
+        document.querySelector("#groundOutlineZField").classList.toggle("is-hidden", !showGroundOutlineAdjustments);
         document.querySelectorAll("[data-dimension-layout]").forEach((button) => {
           button.classList.toggle("is-active", button.dataset.dimensionLayout === state.dimensionLayout);
         });
@@ -2295,8 +2367,8 @@
       function syncDimensionFieldOrder() {
         const group = document.querySelector("#showRecessField").parentElement;
         const orderedIds = state.layoutMode === "tabletop"
-          ? ["showRecessField", "dimensionLayoutField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "depthField", "heightField"]
-          : ["showRecessField", "dimensionLayoutField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "heightField", "depthField"];
+          ? ["showRecessField", "dimensionLayoutField", "groundOutlineField", "groundOutlineSizeField", "groundOutlineXField", "groundOutlineZField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "depthField", "heightField"]
+          : ["showRecessField", "dimensionLayoutField", "groundOutlineField", "groundOutlineSizeField", "groundOutlineXField", "groundOutlineZField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "heightField", "depthField"];
         for (const id of orderedIds) {
           group.appendChild(document.querySelector(`#${id}`));
         }
@@ -2466,6 +2538,12 @@
         const parsed = parseHexColor(value);
         if (parsed === null || !(key in COLORS)) return;
         COLORS[key] = parsed;
+        syncSceneColorMaterials();
+        syncColorControls();
+        rebuild();
+      }
+
+      function syncSceneColorMaterials() {
         lineMaterials.wall.color.setHex(COLORS.wallLine);
         lineMaterials.soft.color.setHex(COLORS.wallLineSoft);
         lineMaterials.edge.color.setHex(COLORS.objectEdge);
@@ -2477,8 +2555,6 @@
           strokeMaterial.opacity = sourceMaterial.opacity;
           strokeMaterial.needsUpdate = true;
         }
-        syncColorControls();
-        rebuild();
       }
 
       function cloneState() {
@@ -2491,10 +2567,120 @@
         return copy;
       }
 
+      function cloneVariants() {
+        return variants.map((variant) => {
+          if (!variant) return null;
+          return {
+            state: Object.fromEntries(
+              Object.entries(variant.state).map(([key, value]) => [
+                key,
+                Array.isArray(value) ? value.map((item) => ({ ...item })) : value
+              ])
+            ),
+            thumbnail: variant.thumbnail
+          };
+        });
+      }
+
+      function openWorkspaceDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(WORKSPACE_DB_NAME, 1);
+          request.addEventListener("upgradeneeded", () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(WORKSPACE_STORE_NAME)) {
+              database.createObjectStore(WORKSPACE_STORE_NAME);
+            }
+          });
+          request.addEventListener("success", () => resolve(request.result));
+          request.addEventListener("error", () => reject(request.error));
+        });
+      }
+
+      async function saveWorkspaceNow() {
+        if (!persistenceReady) return;
+        try {
+          const database = await openWorkspaceDatabase();
+          const transaction = database.transaction(WORKSPACE_STORE_NAME, "readwrite");
+          transaction.objectStore(WORKSPACE_STORE_NAME).put(
+            {
+              state: cloneState(),
+              variants: cloneVariants(),
+              activeVariantIndex,
+              colors: { ...COLORS }
+            },
+            WORKSPACE_RECORD_KEY
+          );
+          await new Promise((resolve, reject) => {
+            transaction.addEventListener("complete", resolve);
+            transaction.addEventListener("error", () => reject(transaction.error));
+            transaction.addEventListener("abort", () => reject(transaction.error));
+          });
+          database.close();
+        } catch (error) {
+          console.warn("无法保存本地工作区", error);
+        }
+      }
+
+      function scheduleWorkspaceSave() {
+        if (!persistenceReady) return;
+        window.clearTimeout(persistenceTimer);
+        persistenceTimer = window.setTimeout(saveWorkspaceNow, 180);
+      }
+
+      async function restoreWorkspace() {
+        try {
+          const database = await openWorkspaceDatabase();
+          const transaction = database.transaction(WORKSPACE_STORE_NAME, "readonly");
+          const request = transaction.objectStore(WORKSPACE_STORE_NAME).get(WORKSPACE_RECORD_KEY);
+          const saved = await new Promise((resolve, reject) => {
+            request.addEventListener("success", () => resolve(request.result));
+            request.addEventListener("error", () => reject(request.error));
+          });
+          database.close();
+          if (!saved) return;
+
+          if (saved.state) {
+            for (const key of variantKeys) {
+              if (!(key in saved.state)) continue;
+              state[key] = Array.isArray(saved.state[key])
+                ? saved.state[key].map((item) => ({ ...item }))
+                : saved.state[key];
+            }
+          }
+          if (Array.isArray(saved.variants)) {
+            for (let index = 0; index < variants.length; index += 1) {
+              const variant = saved.variants[index];
+              variants[index] = variant
+                ? {
+                    state: Object.fromEntries(
+                      Object.entries(variant.state || {}).map(([key, value]) => [
+                        key,
+                        Array.isArray(value) ? value.map((item) => ({ ...item })) : value
+                      ])
+                    ),
+                    thumbnail: variant.thumbnail || ""
+                  }
+                : null;
+            }
+          }
+          if (saved.colors) {
+            for (const key of Object.keys(COLORS)) {
+              if (Number.isFinite(saved.colors[key])) COLORS[key] = saved.colors[key];
+            }
+            syncSceneColorMaterials();
+          }
+          activeVariantIndex = clamp(Number(saved.activeVariantIndex) || 0, 0, variants.length - 1);
+          selectedTextId = state.textItems[0]?.id || null;
+        } catch (error) {
+          console.warn("无法恢复本地工作区", error);
+        }
+      }
+
       function clearVariants() {
         variants.fill(null);
         activeVariantIndex = 0;
         renderVariantDock();
+        scheduleWorkspaceSave();
       }
 
       async function saveVariant(index) {
@@ -2508,6 +2694,7 @@
           thumbnail: createCompositeCanvas().toDataURL("image/png")
         };
         renderVariantDock();
+        scheduleWorkspaceSave();
       }
 
       function applyVariant(index) {
@@ -2515,9 +2702,11 @@
         if (!variant) {
           activeVariantIndex = index;
           renderVariantDock();
+          scheduleWorkspaceSave();
           return;
         }
         for (const key of variantKeys) {
+          if (!(key in variant.state)) continue;
           state[key] = Array.isArray(variant.state[key])
             ? variant.state[key].map((item) => ({ ...item }))
             : variant.state[key];
@@ -2956,6 +3145,7 @@
           item.text = editor.value;
           const overlay = Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === item.id);
           if (overlay) overlay.textContent = item.text || " ";
+          scheduleWorkspaceSave();
         });
 
         const updateFontSize = (value) => {
@@ -2966,6 +3156,7 @@
           sizeNumber.value = item.fontSize;
           const overlay = Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === item.id);
           if (overlay) overlay.style.fontSize = `${item.fontSize}px`;
+          scheduleWorkspaceSave();
         };
         sizeRange.addEventListener("input", () => updateFontSize(sizeRange.value));
         sizeNumber.addEventListener("input", () => updateFontSize(sizeNumber.value));
@@ -3006,6 +3197,7 @@
           drag.active = false;
           drag.id = null;
           drag.element = null;
+          scheduleWorkspaceSave();
         };
         textOverlayLayer.addEventListener("pointerup", endTextDrag);
         textOverlayLayer.addEventListener("pointercancel", endTextDrag);
@@ -3018,25 +3210,44 @@
         });
       }
 
-      window.addEventListener("resize", resize);
-      bindControls();
-      syncColorControls();
-      syncOutputRatio();
-      syncLayoutControls();
-      syncControlVisibility();
-      syncStickerOverlay();
-      syncTextOverlays();
-      renderVariantDock();
-      resize();
-      rebuild();
+      async function initializeApp() {
+        await restoreWorkspace();
+        bindControls();
+        syncColorControls();
+        syncOutputRatio();
+        syncLayoutControls();
+        syncControlVisibility();
+        syncStickerOverlay();
+        syncTextOverlays();
+        renderVariantDock();
+        updateCamera();
+        resize();
+        rebuild();
+        persistenceReady = true;
+        scheduleWorkspaceSave();
 
-      window.perspectiveBlocks = {
-        state,
-        rebuild,
-        updateCamera,
-        textureCache,
-        colors: COLORS
-      };
+        window.perspectiveBlocks = {
+          state,
+          rebuild,
+          updateCamera,
+          textureCache,
+          colors: COLORS,
+          saveWorkspace: saveWorkspaceNow
+        };
+      }
+
+      window.addEventListener("resize", resize);
+      window.addEventListener("pagehide", () => {
+        window.clearTimeout(persistenceTimer);
+        saveWorkspaceNow();
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          window.clearTimeout(persistenceTimer);
+          saveWorkspaceNow();
+        }
+      });
+      initializeApp();
     </script>
   </body>
 </html>
