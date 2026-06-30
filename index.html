@@ -177,6 +177,34 @@
         outline-offset: 4px;
       }
 
+      .text-rotate-handle {
+        position: absolute;
+        right: -28px;
+        top: -28px;
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border: 1px solid rgba(255, 97, 77, 0.92);
+        border-radius: 50%;
+        background: #ffffff;
+        color: #ff614d;
+        font-family: "Segoe UI Symbol", "Microsoft YaHei", sans-serif;
+        font-size: 17px;
+        line-height: 1;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        cursor: grab;
+      }
+
+      .text-rotate-handle::before {
+        content: "↻";
+        transform: translateY(-1px);
+      }
+
+      .text-rotate-handle:active {
+        cursor: grabbing;
+      }
+
       .text-editor-field {
         align-items: start;
       }
@@ -2235,6 +2263,9 @@
       }
 
       function syncTextOverlays() {
+        for (const item of state.textItems) {
+          if (!Number.isFinite(item.rotation)) item.rotation = 0;
+        }
         textOverlayLayer.innerHTML = "";
         for (const item of state.textItems) {
           const element = document.createElement("div");
@@ -2244,6 +2275,13 @@
           element.style.left = `${item.x * 100}%`;
           element.style.top = `${item.y * 100}%`;
           element.style.fontSize = `${item.fontSize}px`;
+          element.style.transform = `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`;
+          if (item.id === selectedTextId) {
+            const handle = document.createElement("span");
+            handle.className = "text-rotate-handle";
+            handle.title = "拖动旋转";
+            element.appendChild(handle);
+          }
           textOverlayLayer.appendChild(element);
         }
         syncTextControls();
@@ -2782,10 +2820,14 @@
           const centerX = output.width * item.x;
           const centerY = output.height * item.y;
           context.font = `${fontSize}px "FZLanTingHeiS-R-GB", "方正兰亭黑简体", sans-serif`;
+          context.save();
+          context.translate(centerX, centerY);
+          context.rotate(THREE.MathUtils.degToRad(item.rotation || 0));
           lines.forEach((line, index) => {
-            const lineY = centerY - blockHeight / 2 + lineHeight * (index + 0.5);
-            context.fillText(line, centerX, lineY);
+            const lineY = -blockHeight / 2 + lineHeight * (index + 0.5);
+            context.fillText(line, 0, lineY);
           });
+          context.restore();
         }
         return output;
       }
@@ -3123,7 +3165,8 @@
             text: "请输入文字",
             x: 0.5 + offset,
             y: 0.2 + offset,
-          fontSize: 32
+            fontSize: 32,
+            rotation: 0
           };
           state.textItems.push(item);
           selectedTextId = item.id;
@@ -3144,7 +3187,11 @@
           if (!item) return;
           item.text = editor.value;
           const overlay = Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === item.id);
-          if (overlay) overlay.textContent = item.text || " ";
+          if (overlay) {
+            const handle = overlay.querySelector(".text-rotate-handle");
+            overlay.textContent = item.text || " ";
+            if (handle) overlay.appendChild(handle);
+          }
           scheduleWorkspaceSave();
         });
 
@@ -3161,7 +3208,7 @@
         sizeRange.addEventListener("input", () => updateFontSize(sizeRange.value));
         sizeNumber.addEventListener("input", () => updateFontSize(sizeNumber.value));
 
-        const drag = { active: false, id: null, pointerId: null, element: null };
+        const drag = { active: false, mode: "move", id: null, pointerId: null, element: null, centerX: 0, centerY: 0, startAngle: 0, startRotation: 0 };
         textOverlayLayer.addEventListener("pointerdown", (event) => {
           const target = event.target.closest(".text-overlay");
           if (!target || event.button !== 0) return;
@@ -3172,9 +3219,16 @@
           });
           syncTextControls();
           drag.active = true;
+          drag.mode = event.target.classList.contains("text-rotate-handle") ? "rotate" : "move";
           drag.id = selectedTextId;
           drag.pointerId = event.pointerId;
           drag.element = target;
+          const rect = sheet.getBoundingClientRect();
+          const item = state.textItems.find((entry) => entry.id === drag.id);
+          drag.centerX = rect.left + rect.width * (item?.x || 0.5);
+          drag.centerY = rect.top + rect.height * (item?.y || 0.5);
+          drag.startAngle = Math.atan2(event.clientY - drag.centerY, event.clientX - drag.centerX);
+          drag.startRotation = item?.rotation || 0;
           target.setPointerCapture(event.pointerId);
         });
         textOverlayLayer.addEventListener("pointermove", (event) => {
@@ -3182,6 +3236,13 @@
           event.stopPropagation();
           const item = state.textItems.find((entry) => entry.id === drag.id);
           if (!item) return;
+          if (drag.mode === "rotate") {
+            const currentAngle = Math.atan2(event.clientY - drag.centerY, event.clientX - drag.centerX);
+            const rotation = drag.startRotation + THREE.MathUtils.radToDeg(currentAngle - drag.startAngle);
+            item.rotation = Math.round(rotation);
+            drag.element.style.transform = `translate(-50%, -50%) rotate(${item.rotation}deg)`;
+            return;
+          }
           const rect = sheet.getBoundingClientRect();
           item.x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
           item.y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
@@ -3195,6 +3256,7 @@
             drag.element.releasePointerCapture(event.pointerId);
           }
           drag.active = false;
+          drag.mode = "move";
           drag.id = null;
           drag.element = null;
           scheduleWorkspaceSave();
