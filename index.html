@@ -86,7 +86,7 @@
       .workspace {
         flex: 1;
         display: grid;
-        grid-template-columns: 340px minmax(0, 1fr) 300px;
+        grid-template-columns: 320px minmax(0, 1fr) 360px;
         align-items: stretch;
         gap: 16px;
         min-height: 620px;
@@ -172,9 +172,69 @@
         touch-action: none;
       }
 
+      .text-overlay-content {
+        display: block;
+        min-width: 1em;
+        outline: none;
+      }
+
       .text-overlay.is-selected {
         outline: 1px dashed rgba(255, 97, 77, 0.9);
         outline-offset: 4px;
+      }
+
+      .text-overlay.is-editing {
+        cursor: text;
+        user-select: text;
+      }
+
+      .text-overlay.is-editing .text-overlay-content {
+        padding: 2px 4px;
+        border-radius: 3px;
+        background: rgba(47, 124, 255, 0.16);
+        box-shadow: 0 0 0 2px rgba(47, 124, 255, 0.9);
+        caret-color: #1f63ff;
+        user-select: text;
+      }
+
+      .text-overlay.is-editing .text-overlay-content::selection {
+        background: rgba(47, 124, 255, 0.32);
+      }
+
+      .text-overlay.is-editing .text-rotate-handle {
+        display: none;
+      }
+
+      .text-delete-button {
+        position: absolute;
+        left: -28px;
+        top: -28px;
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border: 1px solid rgba(255, 97, 77, 0.92);
+        border-radius: 50%;
+        background: #ffffff;
+        color: #ff614d;
+        font-family: Arial, "Microsoft YaHei", sans-serif;
+        font-size: 18px;
+        line-height: 1;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        cursor: pointer;
+      }
+
+      .text-delete-button::before {
+        content: "×";
+        transform: translateY(-1px);
+      }
+
+      .text-delete-button:hover {
+        background: #fff2ef;
+      }
+
+      .text-overlay.is-editing .text-delete-button {
+        display: none;
       }
 
       .text-rotate-handle {
@@ -203,24 +263,6 @@
 
       .text-rotate-handle:active {
         cursor: grabbing;
-      }
-
-      .text-editor-field {
-        align-items: start;
-      }
-
-      .text-editor {
-        grid-column: 2 / -1;
-        min-height: 66px;
-        padding: 8px 10px;
-        border: 1px solid var(--panel-border);
-        border-radius: 7px;
-        background: #ffffff;
-        color: var(--ink);
-        font-family: "FZLanTingHeiS-R-GB", "方正兰亭黑简体", sans-serif;
-        font-size: 12px;
-        line-height: 1.4;
-        resize: vertical;
       }
 
       .file-button {
@@ -375,6 +417,14 @@
         min-height: 34px;
       }
 
+      .overlay-tool .field.text-size-field {
+        grid-template-columns: 104px minmax(120px, 1fr);
+      }
+
+      .text-size-field label {
+        white-space: nowrap;
+      }
+
       .overlay-tool .field + .field {
         margin-top: 8px;
       }
@@ -385,11 +435,6 @@
 
       .overlay-tool .button-row {
         margin-top: 8px;
-      }
-
-      .overlay-tool .text-editor {
-        min-height: 66px;
-        max-height: 120px;
       }
 
       .ratio-tabs {
@@ -519,6 +564,15 @@
         margin-top: 8px;
       }
 
+      .button-row.text-actions {
+        display: flex;
+        justify-content: center;
+      }
+
+      .button-row.text-actions .text-button {
+        width: min(180px, 100%);
+      }
+
       .text-button {
         height: 32px;
         border: 1px solid var(--panel-border);
@@ -552,6 +606,49 @@
 
       .field.is-hidden {
         display: none;
+      }
+
+      .special-effects-panel {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--separator);
+      }
+
+      .special-effects-panel summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 32px;
+        color: var(--quiet);
+        font-size: 11px;
+        font-weight: 640;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .special-effects-panel summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .special-effects-panel summary::after {
+        content: "⌄";
+        color: var(--muted);
+        font-size: 14px;
+        transition: transform 150ms ease;
+      }
+
+      .special-effects-panel[open] summary::after {
+        transform: rotate(180deg);
+      }
+
+      .special-effects-fields {
+        display: grid;
+        gap: 8px;
+        padding-top: 6px;
+      }
+
+      .special-effects-panel .field + .field {
+        margin-top: 0;
       }
 
       label {
@@ -686,30 +783,12 @@
         border-top: 1px solid #e6e6eb;
       }
 
-      .color-panel summary {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+      .color-panel-title {
         min-height: 32px;
         color: var(--quiet);
         font-size: 11px;
         font-weight: 640;
-        cursor: pointer;
-        list-style: none;
-      }
-
-      .color-panel summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .color-panel summary::after {
-        content: "⌄";
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .color-panel[open] summary::after {
-        transform: rotate(180deg);
+        line-height: 32px;
       }
 
       .color-field {
@@ -718,6 +797,14 @@
         align-items: center;
         gap: 8px;
         min-height: 38px;
+      }
+
+      .color-field.color-choice-field {
+        grid-template-columns: 86px minmax(0, 1fr);
+      }
+
+      .color-field.color-choice-field label {
+        white-space: nowrap;
       }
 
       .color-field + .color-field {
@@ -827,37 +914,47 @@
                 <option value="tabletop">桌面放置</option>
               </select>
             </div>
-            <div class="field" id="showRecessField">
-              <label for="showRecessCheckbox">是否带有凹槽</label>
-              <input id="showRecessCheckbox" data-key="showRecess" type="checkbox" />
-            </div>
             <div class="field" id="dimensionLayoutField">
-              <label>标注位置</label>
+              <label>标注线位置</label>
               <div class="ratio-tabs dimension-layout-tabs" aria-label="标注线位置">
                 <button class="ratio-tab" type="button" data-dimension-layout="auto">自动</button>
-                <button class="ratio-tab" type="button" data-dimension-layout="front">第一版</button>
-                <button class="ratio-tab" type="button" data-dimension-layout="top">第二版</button>
+                <button class="ratio-tab" type="button" data-dimension-layout="front">样式1</button>
+                <button class="ratio-tab" type="button" data-dimension-layout="top">样式2</button>
               </div>
             </div>
-            <div class="field" id="groundOutlineField">
-              <label for="groundOutlineCheckbox">底部虚线范围</label>
-              <input id="groundOutlineCheckbox" data-key="showGroundOutline" type="checkbox" />
-            </div>
-            <div class="field" id="groundOutlineSizeField">
-              <label for="groundOutlineSizeRange">范围大小</label>
-              <input id="groundOutlineSizeRange" data-key="groundOutlineSize" type="range" min="0.05" max="2" step="0.01" />
-              <input id="groundOutlineSizeNumber" data-key="groundOutlineSize" type="number" min="0.05" max="2" step="0.01" />
-            </div>
-            <div class="field" id="groundOutlineXField">
-              <label for="groundOutlineXRange">左右位置</label>
-              <input id="groundOutlineXRange" data-key="groundOutlineX" type="range" min="-3" max="3" step="0.01" />
-              <input id="groundOutlineXNumber" data-key="groundOutlineX" type="number" min="-3" max="3" step="0.01" />
-            </div>
-            <div class="field" id="groundOutlineZField">
-              <label for="groundOutlineZRange">前后位置</label>
-              <input id="groundOutlineZRange" data-key="groundOutlineZ" type="range" min="-3" max="3" step="0.01" />
-              <input id="groundOutlineZNumber" data-key="groundOutlineZ" type="number" min="-3" max="3" step="0.01" />
-            </div>
+            <details class="special-effects-panel" id="specialEffectsPanel">
+              <summary>特殊效果</summary>
+              <div class="special-effects-fields">
+                <div class="field" id="showRecessField">
+                  <label for="showRecessCheckbox">是否带有凹槽</label>
+                  <input id="showRecessCheckbox" data-key="showRecess" type="checkbox" />
+                </div>
+                <div class="field" id="gapField">
+                  <label for="gapRange">间距</label>
+                  <input id="gapRange" data-key="gap" type="range" min="1.0" max="5.2" step="0.01" />
+                  <input id="gapNumber" data-key="gap" type="number" min="1.0" max="5.2" step="0.01" />
+                </div>
+                <div class="field" id="groundOutlineField">
+                  <label for="groundOutlineCheckbox">底部虚线范围</label>
+                  <input id="groundOutlineCheckbox" data-key="showGroundOutline" type="checkbox" />
+                </div>
+                <div class="field" id="groundOutlineSizeField">
+                  <label for="groundOutlineSizeRange">范围大小</label>
+                  <input id="groundOutlineSizeRange" data-key="groundOutlineSize" type="range" min="0.05" max="2" step="0.01" />
+                  <input id="groundOutlineSizeNumber" data-key="groundOutlineSize" type="number" min="0.05" max="2" step="0.01" />
+                </div>
+                <div class="field" id="groundOutlineXField">
+                  <label for="groundOutlineXRange">左右位置</label>
+                  <input id="groundOutlineXRange" data-key="groundOutlineX" type="range" min="-3" max="3" step="0.01" />
+                  <input id="groundOutlineXNumber" data-key="groundOutlineX" type="number" min="-3" max="3" step="0.01" />
+                </div>
+                <div class="field" id="groundOutlineZField">
+                  <label for="groundOutlineZRange">前后位置</label>
+                  <input id="groundOutlineZRange" data-key="groundOutlineZ" type="range" min="-3" max="3" step="0.01" />
+                  <input id="groundOutlineZNumber" data-key="groundOutlineZ" type="number" min="-3" max="3" step="0.01" />
+                </div>
+              </div>
+            </details>
             <div class="subsection-title" id="dimensionSectionTitle">立方体尺寸</div>
             <div class="field" id="widthField">
               <label for="widthRange">宽</label>
@@ -882,80 +979,22 @@
               <input id="depthRange" data-key="depth" type="range" min="0.45" max="2.7" step="0.01" />
               <input id="depthNumber" data-key="depth" type="number" min="0.45" max="2.7" step="0.01" />
             </div>
-            <div class="field">
-              <label for="gapRange">间距</label>
-              <input id="gapRange" data-key="gap" type="range" min="1.0" max="5.2" step="0.01" />
-              <input id="gapNumber" data-key="gap" type="number" min="1.0" max="5.2" step="0.01" />
-            </div>
           </div>
 
-          <div class="control-group">
-            <div class="group-title">相机</div>
-            <div class="field">
-              <label for="cameraDistanceRange">镜距</label>
-              <input id="cameraDistanceRange" data-key="cameraDistance" type="range" min="5.8" max="25" step="0.01" />
-              <input id="cameraDistanceNumber" data-key="cameraDistance" type="number" min="5.8" max="25" step="0.01" />
+          <div class="color-panel">
+            <div class="color-panel-title">颜色设置</div>
+            <div class="color-field color-choice-field">
+              <label for="backgroundPlaneSelect">背景立面</label>
+              <select id="backgroundPlaneSelect">
+                <option value="white">白色</option>
+                <option value="gray">灰色</option>
+              </select>
             </div>
-            <div class="field">
-              <label for="cameraFovRange">透视</label>
-              <input id="cameraFovRange" data-key="cameraFov" type="range" min="10" max="60" step="0.1" />
-              <input id="cameraFovNumber" data-key="cameraFov" type="number" min="10" max="60" step="0.1" />
-            </div>
-            <div class="field" id="cameraYawField">
-              <label for="cameraYawRange">水平角</label>
-              <input id="cameraYawRange" data-key="cameraYaw" type="range" min="-36" max="36" step="0.1" />
-              <input id="cameraYawNumber" data-key="cameraYaw" type="number" min="-36" max="36" step="0.1" />
-            </div>
-            <div class="field" id="cameraPitchField">
-              <label for="cameraPitchRange">垂直角</label>
-              <input id="cameraPitchRange" data-key="cameraPitch" type="range" min="8" max="72" step="0.1" />
-              <input id="cameraPitchNumber" data-key="cameraPitch" type="number" min="8" max="72" step="0.1" />
-            </div>
-            <div class="field">
-              <label for="cameraPanXRange">左右</label>
-              <input id="cameraPanXRange" data-key="cameraPanX" type="range" min="-3.6" max="3.6" step="0.01" />
-              <input id="cameraPanXNumber" data-key="cameraPanX" type="number" min="-3.6" max="3.6" step="0.01" />
-            </div>
-            <div class="field">
-              <label for="cameraPanYRange">上下</label>
-              <input id="cameraPanYRange" data-key="cameraPanY" type="range" min="-3.6" max="3.6" step="0.01" />
-              <input id="cameraPanYNumber" data-key="cameraPanY" type="number" min="-3.6" max="3.6" step="0.01" />
+            <div class="color-field color-choice-field">
+              <label for="wallLineVisibleCheckbox">墙线</label>
+              <input id="wallLineVisibleCheckbox" type="checkbox" />
             </div>
           </div>
-
-          <details class="color-panel">
-            <summary>颜色设置</summary>
-            <div class="color-field">
-              <label for="dimensionColorText">标注线颜色</label>
-              <input id="dimensionColorPicker" data-color-key="dimension" type="color" />
-              <input id="dimensionColorText" data-color-key="dimension" type="text" />
-            </div>
-            <div class="color-field">
-              <label for="backgroundPlaneColorText">背景立面</label>
-              <input id="backgroundPlaneColorPicker" data-color-key="backgroundPlane" type="color" />
-              <input id="backgroundPlaneColorText" data-color-key="backgroundPlane" type="text" />
-            </div>
-            <div class="color-field">
-              <label for="wallLineColorText">墙线颜色</label>
-              <input id="wallLineColorPicker" data-color-key="wallLine" type="color" />
-              <input id="wallLineColorText" data-color-key="wallLine" type="text" />
-            </div>
-            <div class="color-field">
-              <label for="objectEdgeColorText">轮廓线颜色</label>
-              <input id="objectEdgeColorPicker" data-color-key="objectEdge" type="color" />
-              <input id="objectEdgeColorText" data-color-key="objectEdge" type="text" />
-            </div>
-            <div class="color-field">
-              <label for="applianceSideColorText">商品侧面颜色</label>
-              <input id="applianceSideColorPicker" data-color-key="applianceSide" type="color" />
-              <input id="applianceSideColorText" data-color-key="applianceSide" type="text" />
-            </div>
-            <div class="color-field">
-              <label for="recessBackColorText">凹槽底色</label>
-              <input id="recessBackColorPicker" data-color-key="recessBack" type="color" />
-              <input id="recessBackColorText" data-color-key="recessBack" type="text" />
-            </div>
-          </details>
         </aside>
 
         <section class="preview-pane">
@@ -979,8 +1018,42 @@
         </section>
 
         <aside class="tools-pane">
-          <h2 class="tools-pane-title">叠加工具</h2>
+          <h2 class="tools-pane-title">工具</h2>
           <div class="overlay-tools">
+            <section class="control-group overlay-tool">
+              <div class="group-title">视图</div>
+              <div class="field">
+                <label for="cameraDistanceRange">镜距</label>
+                <input id="cameraDistanceRange" data-key="cameraDistance" type="range" min="5.8" max="25" step="0.01" />
+                <input id="cameraDistanceNumber" data-key="cameraDistance" type="number" min="5.8" max="25" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="cameraFovRange">透视</label>
+                <input id="cameraFovRange" data-key="cameraFov" type="range" min="10" max="60" step="0.1" />
+                <input id="cameraFovNumber" data-key="cameraFov" type="number" min="10" max="60" step="0.1" />
+              </div>
+              <div class="field" id="cameraYawField">
+                <label for="cameraYawRange">水平角</label>
+                <input id="cameraYawRange" data-key="cameraYaw" type="range" min="-36" max="36" step="0.1" />
+                <input id="cameraYawNumber" data-key="cameraYaw" type="number" min="-36" max="36" step="0.1" />
+              </div>
+              <div class="field" id="cameraPitchField">
+                <label for="cameraPitchRange">垂直角</label>
+                <input id="cameraPitchRange" data-key="cameraPitch" type="range" min="8" max="72" step="0.1" />
+                <input id="cameraPitchNumber" data-key="cameraPitch" type="number" min="8" max="72" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="cameraPanXRange">左右</label>
+                <input id="cameraPanXRange" data-key="cameraPanX" type="range" min="-3.6" max="3.6" step="0.01" />
+                <input id="cameraPanXNumber" data-key="cameraPanX" type="number" min="-3.6" max="3.6" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="cameraPanYRange">上下</label>
+                <input id="cameraPanYRange" data-key="cameraPanY" type="range" min="-3.6" max="3.6" step="0.01" />
+                <input id="cameraPanYNumber" data-key="cameraPanY" type="number" min="-3.6" max="3.6" step="0.01" />
+              </div>
+            </section>
+
             <section class="control-group overlay-tool">
               <div class="group-title">贴片</div>
               <div class="field">
@@ -1003,18 +1076,15 @@
 
             <section class="control-group overlay-tool">
               <div class="group-title">文字</div>
-              <div class="field text-editor-field">
-                <label for="textEditor">文字内容</label>
-                <textarea class="text-editor" id="textEditor" placeholder="选择或添加一个文本框"></textarea>
+              <div class="field text-size-field">
+                <label for="textFontSizeSelect">尺寸标注字号</label>
+                <select id="textFontSizeSelect">
+                  <option value="32">标准10号字</option>
+                  <option value="28">最小9号字</option>
+                </select>
               </div>
-              <div class="field">
-                <label for="textFontSizeRange">字号</label>
-                <input id="textFontSizeRange" type="range" min="12" max="120" step="1" />
-                <input id="textFontSizeNumber" type="number" min="12" max="120" step="1" />
-              </div>
-              <div class="button-row">
+              <div class="button-row text-actions">
                 <button class="text-button" id="addTextItem" type="button">添加文字</button>
-                <button class="text-button" id="removeTextItem" type="button">删除文字</button>
               </div>
             </section>
           </div>
@@ -1027,11 +1097,11 @@
       const COLORS = {
         background: 0xffffff,
         backgroundPlane: 0xffffff,
-        wallLine: 0x9fa3a7,
-        wallLineSoft: 0xc9cbd0,
-        objectEdge: 0x1f2428,
+        wallLine: 0xa1a1a1,
+        wallLineSoft: 0xa1a1a1,
+        objectEdge: 0x000000,
         leftFront: 0xffffff,
-        leftSide: 0xd0d4da,
+        leftSide: 0xd2d3d8,
         leftTop: 0xf4f5f7,
         recessBack: 0xf7f8fa,
         recessSide: 0xe5e8ee,
@@ -1042,7 +1112,18 @@
         applianceDetail: 0x3d4145,
         applianceGroove: 0x111315,
         applianceShadow: 0x9da3aa,
-        dimension: 0xff614d
+        dimension: 0xfa4e28
+      };
+
+      const FIXED_COLOR_VALUES = {
+        dimension: 0xfa4e28,
+        objectEdge: 0x000000,
+        productSide: 0xd2d3d8,
+        wallLineVisible: 0xa1a1a1,
+        backgroundPlaneWhite: 0xffffff,
+        backgroundPlaneGray: 0xf5f6fa,
+        recessOnWhiteBackground: 0x95a1b1,
+        recessOnGrayBackground: 0x65758b
       };
 
       const state = {
@@ -1069,6 +1150,7 @@
         cameraPitch: 0,
         cameraPanX: 0,
         cameraPanY: 0,
+        showWallLines: "true",
         stickerSrc: "",
         stickerX: 0.5,
         stickerY: 0.15,
@@ -1076,6 +1158,7 @@
         textItems: []
       };
       const variantKeys = Object.keys(state);
+      const STANDARD_TEXT_FONT_SIZES = [28, 32];
       let activeVariantIndex = 0;
       const variants = Array.from({ length: 6 }, () => null);
       let selectedTextId = null;
@@ -1176,6 +1259,13 @@
           depthTest: true,
           depthWrite: false
         }),
+        recessStructure: new THREE.LineBasicMaterial({
+          color: COLORS.wallLine,
+          transparent: true,
+          opacity: 0.62,
+          depthTest: false,
+          depthWrite: false
+        }),
         soft: new THREE.LineBasicMaterial({
           color: COLORS.wallLineSoft,
           transparent: true,
@@ -1217,16 +1307,25 @@
           opacity: 0.98,
           depthTest: false,
           depthWrite: false
+        }),
+        groundOutline: new THREE.LineBasicMaterial({
+          color: COLORS.dimension,
+          transparent: true,
+          opacity: 0.98,
+          depthTest: false,
+          depthWrite: false
         })
       };
       const strokeStyles = new Map([
         [lineMaterials.wall, { width: 0.0034, renderOrder: 2, depthTest: true }],
+        [lineMaterials.recessStructure, { width: 0.0034, renderOrder: 14, depthTest: false }],
         [lineMaterials.soft, { width: 0.0026, renderOrder: 1, depthTest: true }],
-        [lineMaterials.edge, { width: 0.0042, renderOrder: 10, depthTest: true }],
+        [lineMaterials.edge, { width: 0.0036, renderOrder: 10, depthTest: true }],
         [lineMaterials.applianceDetail, { width: 0.0044, renderOrder: 11, depthTest: true }],
         [lineMaterials.applianceGroove, { width: 0.0038, renderOrder: 12, depthTest: true }],
         [lineMaterials.panelGrain, { width: 0.002, renderOrder: 3, depthTest: true }],
-        [lineMaterials.dimension, { width: 0.008, renderOrder: 20, depthTest: false }]
+        [lineMaterials.dimension, { width: 0.008, renderOrder: 20, depthTest: false }],
+        [lineMaterials.groundOutline, { width: 0.008, renderOrder: 20, depthTest: false }]
       ]);
       const segmentStrokeMaterials = new Map();
 
@@ -1392,6 +1491,82 @@
         }
       }
 
+      function projectToScreenPoint(point) {
+        const projected = point.clone().project(camera);
+        return { x: projected.x, y: projected.y };
+      }
+
+      function cross2d(a, b, c) {
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+      }
+
+      function getConvexHull(points) {
+        const sorted = [...points].sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+        if (sorted.length <= 2) return sorted;
+        const lower = [];
+        for (const point of sorted) {
+          while (lower.length >= 2 && cross2d(lower[lower.length - 2], lower[lower.length - 1], point) <= 0) {
+            lower.pop();
+          }
+          lower.push(point);
+        }
+        const upper = [];
+        for (let i = sorted.length - 1; i >= 0; i -= 1) {
+          const point = sorted[i];
+          while (upper.length >= 2 && cross2d(upper[upper.length - 2], upper[upper.length - 1], point) <= 0) {
+            upper.pop();
+          }
+          upper.push(point);
+        }
+        lower.pop();
+        upper.pop();
+        return lower.concat(upper);
+      }
+
+      function pointInConvexPolygon(point, polygon) {
+        if (polygon.length < 3) return false;
+        let sign = 0;
+        for (let i = 0; i < polygon.length; i += 1) {
+          const a = polygon[i];
+          const b = polygon[(i + 1) % polygon.length];
+          const cross = cross2d(a, b, point);
+          if (Math.abs(cross) < 0.0001) continue;
+          const currentSign = Math.sign(cross);
+          if (sign === 0) sign = currentSign;
+          if (currentSign !== sign) return false;
+        }
+        return true;
+      }
+
+      function createProjectedCuboidOccluder(x0, x1, y0, y1, z0, z1) {
+        const points = [
+          v(x0, y0, z0),
+          v(x1, y0, z0),
+          v(x0, y1, z0),
+          v(x1, y1, z0),
+          v(x0, y0, z1),
+          v(x1, y0, z1),
+          v(x0, y1, z1),
+          v(x1, y1, z1)
+        ].map(projectToScreenPoint);
+        return getConvexHull(points);
+      }
+
+      function addDashedSegmentBehindOccluder(group, start, end, occluder, lineMaterial, dashLength = 0.12, gapLength = 0.08) {
+        const direction = end.clone().sub(start);
+        const length = direction.length();
+        if (length <= 0.0001) return;
+        direction.normalize();
+        for (let offset = 0; offset < length; offset += dashLength + gapLength) {
+          const dashEnd = Math.min(offset + dashLength, length);
+          const dashStartPoint = start.clone().addScaledVector(direction, offset);
+          const dashEndPoint = start.clone().addScaledVector(direction, dashEnd);
+          const midpoint = dashStartPoint.clone().add(dashEndPoint).multiplyScalar(0.5);
+          if (pointInConvexPolygon(projectToScreenPoint(midpoint), occluder)) continue;
+          addStrokeSegment(group, dashStartPoint, dashEndPoint, lineMaterial);
+        }
+      }
+
       function addGroundOutline(group, x0, x1, z0, z1) {
         const margin = state.groundOutlineSize;
         const offsetX = state.groundOutlineX;
@@ -1401,10 +1576,11 @@
         const outerX1 = x1 + margin + offsetX;
         const outerZ0 = z0 - margin + offsetZ;
         const outerZ1 = z1 + margin + offsetZ;
-        addDashedSegment(group, v(outerX0, y, outerZ0), v(outerX1, y, outerZ0), lineMaterials.dimension);
-        addDashedSegment(group, v(outerX1, y, outerZ0), v(outerX1, y, outerZ1), lineMaterials.dimension);
-        addDashedSegment(group, v(outerX1, y, outerZ1), v(outerX0, y, outerZ1), lineMaterials.dimension);
-        addDashedSegment(group, v(outerX0, y, outerZ1), v(outerX0, y, outerZ0), lineMaterials.dimension);
+        const occluder = createProjectedCuboidOccluder(x0, x1, 0, state.height, z0, z1);
+        addDashedSegmentBehindOccluder(group, v(outerX0, y, outerZ0), v(outerX1, y, outerZ0), occluder, lineMaterials.groundOutline);
+        addDashedSegmentBehindOccluder(group, v(outerX1, y, outerZ0), v(outerX1, y, outerZ1), occluder, lineMaterials.groundOutline);
+        addDashedSegmentBehindOccluder(group, v(outerX1, y, outerZ1), v(outerX0, y, outerZ1), occluder, lineMaterials.groundOutline);
+        addDashedSegmentBehindOccluder(group, v(outerX0, y, outerZ1), v(outerX0, y, outerZ0), occluder, lineMaterials.groundOutline);
       }
 
       function addCircle(group, center, radius, lineMaterial, segments = 48) {
@@ -2025,12 +2201,13 @@
         const y1 = h;
         const zFront = 0;
         const zBack = -d;
+        const recessOpacity = 0.2;
 
-        addQuad(group, [v(x0, y0, zBack), v(x1, y0, zBack), v(x1, y1, zBack), v(x0, y1, zBack)], material(COLORS.recessBack, 0.92));
-        addQuad(group, [v(x0, y0, zFront), v(x0, y0, zBack), v(x0, y1, zBack), v(x0, y1, zFront)], material(COLORS.recessSide, 0.9));
-        addQuad(group, [v(x1, y0, zBack), v(x1, y0, zFront), v(x1, y1, zFront), v(x1, y1, zBack)], material(COLORS.recessBack, 0.72));
-        addQuad(group, [v(x0, y1, zFront), v(x1, y1, zFront), v(x1, y1, zBack), v(x0, y1, zBack)], material(COLORS.recessFloor, 0.9));
-        addQuad(group, [v(x0, y0, zBack), v(x1, y0, zBack), v(x1, y0, zFront), v(x0, y0, zFront)], material(COLORS.recessFloor, 0.92));
+        addQuad(group, [v(x0, y0, zBack), v(x1, y0, zBack), v(x1, y1, zBack), v(x0, y1, zBack)], material(COLORS.recessBack, recessOpacity));
+        addQuad(group, [v(x0, y0, zFront), v(x0, y0, zBack), v(x0, y1, zBack), v(x0, y1, zFront)], material(COLORS.recessBack, recessOpacity));
+        addQuad(group, [v(x1, y0, zBack), v(x1, y0, zFront), v(x1, y1, zFront), v(x1, y1, zBack)], material(COLORS.recessBack, recessOpacity));
+        addQuad(group, [v(x0, y1, zFront), v(x1, y1, zFront), v(x1, y1, zBack), v(x0, y1, zBack)], material(COLORS.recessBack, recessOpacity));
+        addQuad(group, [v(x0, y0, zBack), v(x1, y0, zBack), v(x1, y0, zFront), v(x0, y0, zFront)], material(COLORS.recessBack, recessOpacity));
 
         const edges = [
           [v(x0, y0, zFront), v(x1, y0, zFront)],
@@ -2046,7 +2223,7 @@
           [v(x0, y1, zFront), v(x0, y1, zBack)],
           [v(x1, y1, zFront), v(x1, y1, zBack)]
         ];
-        addSegments(group, edges, lineMaterials.wall);
+        addSegments(group, edges, lineMaterials.recessStructure);
 
         addDimension(group, v(x0, y1 + 0.16, zFront + 0.035), v(x1, y1 + 0.16, zFront + 0.035), vectorY, 0.14);
         addDimension(group, v(x1 + 0.16, y0, zFront + 0.035), v(x1 + 0.16, y1, zFront + 0.035), vectorX, 0.14);
@@ -2088,14 +2265,14 @@
           addQuad(group, [v(rx1, 0, rz0), v(tableX1, 0, rz0), v(tableX1, 0, rz1), v(rx1, 0, rz1)], material(0xffffff));
 
           addQuad(group, [v(rx0, recessBottomY, rz0), v(rx1, recessBottomY, rz0), v(rx1, recessBottomY, rz1), v(rx0, recessBottomY, rz1)], material(COLORS.leftSide, 0.84));
-          addQuad(group, [v(rx0, 0, rz0), v(rx1, 0, rz0), v(rx1, recessBottomY, rz0), v(rx0, recessBottomY, rz0)], material(COLORS.recessSide, 0.34));
-          addQuad(group, [v(rx0, recessBottomY, rz1), v(rx1, recessBottomY, rz1), v(rx1, 0, rz1), v(rx0, 0, rz1)], material(COLORS.recessSide, 0.5));
-          addQuad(group, [v(rx0, 0, rz0), v(rx0, recessBottomY, rz0), v(rx0, recessBottomY, rz1), v(rx0, 0, rz1)], material(COLORS.recessFloor, 0.42));
-          addQuad(group, [v(rx1, recessBottomY, rz0), v(rx1, 0, rz0), v(rx1, 0, rz1), v(rx1, recessBottomY, rz1)], material(COLORS.recessFloor, 0.42));
+          addQuad(group, [v(rx0, 0, rz0), v(rx1, 0, rz0), v(rx1, recessBottomY, rz0), v(rx0, recessBottomY, rz0)], material(COLORS.leftSide, 0.34));
+          addQuad(group, [v(rx0, recessBottomY, rz1), v(rx1, recessBottomY, rz1), v(rx1, 0, rz1), v(rx0, 0, rz1)], material(COLORS.leftSide, 0.5));
+          addQuad(group, [v(rx0, 0, rz0), v(rx0, recessBottomY, rz0), v(rx0, recessBottomY, rz1), v(rx0, 0, rz1)], material(COLORS.leftSide, 0.42));
+          addQuad(group, [v(rx1, recessBottomY, rz0), v(rx1, 0, rz0), v(rx1, 0, rz1), v(rx1, recessBottomY, rz1)], material(COLORS.leftSide, 0.42));
         } else {
           addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(0xffffff));
         }
-        addQuad(group, [v(tableX0, tableApronBottomY, tableFront), v(tableX1, tableApronBottomY, tableFront), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(COLORS.recessSide));
+        addQuad(group, [v(tableX0, tableApronBottomY, tableFront), v(tableX1, tableApronBottomY, tableFront), v(tableX1, 0, tableFront), v(tableX0, 0, tableFront)], material(COLORS.leftSide));
         const tableLines = [
           [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack)],
           [v(tableX0, 0, tableFront), v(tableX1, 0, tableFront)],
@@ -2132,10 +2309,10 @@
           );
         }
         addCuboid(group, x0, x1, objectY0, objectY1, z0, z1, {
-          front: material(COLORS.applianceSide),
+          front: material(COLORS.leftSide),
           side: material(COLORS.leftSide),
           top: material(COLORS.applianceFront),
-          bottom: material(COLORS.leftTop)
+          bottom: material(COLORS.leftSide)
         });
         addQuad(group, [v(x0 + w * 0.05, objectY1 + 0.004, z0 + d * 0.08), v(x1 - w * 0.05, objectY1 + 0.004, z0 + d * 0.08), v(x1 - w * 0.12, objectY1 + 0.004, z1 - d * 0.12), v(x0 + w * 0.12, objectY1 + 0.004, z1 - d * 0.12)], material(0xffffff, 0.18));
         addSegments(
@@ -2157,7 +2334,9 @@
           lineMaterials.edge
         );
 
-        const sideView = Math.abs(state.cameraYaw) >= 8;
+        const autoSideView = Math.abs(state.cameraYaw) >= 8;
+        const sideView =
+          state.dimensionLayout === "top" || (state.dimensionLayout === "auto" && autoSideView);
         if (sideView) {
           const sideSign = state.cameraYaw >= 0 ? 1 : -1;
           const sideX = sideSign > 0 ? x1 + 0.18 : x0 - 0.18;
@@ -2180,6 +2359,7 @@
 
       function rebuild() {
         clearRoot();
+        syncSceneColorMaterials();
 
         const dims = {
           width: state.width,
@@ -2249,34 +2429,45 @@
         return state.textItems.find((item) => item.id === selectedTextId) || null;
       }
 
+      function getStandardTextFontSize(value) {
+        const size = Number(value);
+        if (STANDARD_TEXT_FONT_SIZES.includes(size)) return size;
+        return STANDARD_TEXT_FONT_SIZES.reduce((closest, current) =>
+          Math.abs(current - size) < Math.abs(closest - size) ? current : closest
+        );
+      }
+
       function syncTextControls() {
         const item = getSelectedTextItem();
-        const editor = document.querySelector("#textEditor");
-        const sizeRange = document.querySelector("#textFontSizeRange");
-        const sizeNumber = document.querySelector("#textFontSizeNumber");
-        editor.disabled = !item;
-        sizeRange.disabled = !item;
-        sizeNumber.disabled = !item;
-        editor.value = item?.text || "";
-        sizeRange.value = item?.fontSize || 32;
-        sizeNumber.value = item?.fontSize || 32;
+        const sizeSelect = document.querySelector("#textFontSizeSelect");
+        sizeSelect.disabled = !item;
+        sizeSelect.value = String(getStandardTextFontSize(item?.fontSize || 32));
       }
 
       function syncTextOverlays() {
         for (const item of state.textItems) {
           if (!Number.isFinite(item.rotation)) item.rotation = 0;
+          item.fontSize = getStandardTextFontSize(item.fontSize || 32);
         }
         textOverlayLayer.innerHTML = "";
         for (const item of state.textItems) {
           const element = document.createElement("div");
           element.className = `text-overlay${item.id === selectedTextId ? " is-selected" : ""}`;
           element.dataset.textId = item.id;
-          element.textContent = item.text || " ";
+          const content = document.createElement("span");
+          content.className = "text-overlay-content";
+          content.textContent = item.text || " ";
+          element.appendChild(content);
           element.style.left = `${item.x * 100}%`;
           element.style.top = `${item.y * 100}%`;
           element.style.fontSize = `${item.fontSize}px`;
           element.style.transform = `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`;
           if (item.id === selectedTextId) {
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "text-delete-button";
+            deleteButton.type = "button";
+            deleteButton.title = "删除文字";
+            element.appendChild(deleteButton);
             const handle = document.createElement("span");
             handle.className = "text-rotate-handle";
             handle.title = "拖动旋转";
@@ -2293,9 +2484,62 @@
         syncTextOverlays();
       }
 
+      function getTextOverlayElement(id) {
+        return Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === id) || null;
+      }
+
+      function getEditableText(content) {
+        return content.innerText.replace(/\r/g, "").replace(/\n$/, "");
+      }
+
+      function selectEditableContent(content) {
+        const selection = window.getSelection();
+        if (!selection) return;
+        const range = document.createRange();
+        range.selectNodeContents(content);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      function finishTextEditing(overlay) {
+        if (!overlay?.classList.contains("is-editing")) return;
+        const content = overlay.querySelector(".text-overlay-content");
+        const item = state.textItems.find((entry) => entry.id === overlay.dataset.textId);
+        if (content && item) {
+          item.text = getEditableText(content) || " ";
+          content.textContent = item.text;
+          content.removeAttribute("contenteditable");
+          content.removeAttribute("spellcheck");
+        }
+        overlay.classList.remove("is-editing");
+        scheduleWorkspaceSave();
+      }
+
+      function beginTextEditing(id) {
+        selectedTextId = state.textItems.some((item) => item.id === id) ? id : null;
+        syncTextOverlays();
+        const overlay = getTextOverlayElement(selectedTextId);
+        const content = overlay?.querySelector(".text-overlay-content");
+        if (!overlay || !content) return;
+        overlay.classList.add("is-editing");
+        content.setAttribute("contenteditable", "true");
+        content.setAttribute("spellcheck", "false");
+        content.focus();
+        selectEditableContent(content);
+      }
+
+      function removeTextItem(id) {
+        if (!id) return;
+        state.textItems = state.textItems.filter((item) => item.id !== id);
+        selectedTextId = state.textItems[0]?.id || null;
+        syncTextOverlays();
+      }
+
       function syncControlVisibility() {
         document.querySelector("#showRecessField").classList.toggle("is-hidden", false);
-        const showDimensionLayout = state.layoutMode === "wall" && state.showRecess !== "true";
+        document.querySelector("#gapField").classList.toggle("is-hidden", state.showRecess !== "true");
+        const showDimensionLayout =
+          state.layoutMode === "tabletop" || (state.layoutMode === "wall" && state.showRecess !== "true");
         document.querySelector("#dimensionLayoutField").classList.toggle("is-hidden", !showDimensionLayout);
         const showGroundOutlineControls = state.layoutMode === "wall";
         const showGroundOutlineAdjustments = showGroundOutlineControls && state.showGroundOutline === "true";
@@ -2403,10 +2647,10 @@
       }
 
       function syncDimensionFieldOrder() {
-        const group = document.querySelector("#showRecessField").parentElement;
+        const group = document.querySelector("#specialEffectsPanel").parentElement;
         const orderedIds = state.layoutMode === "tabletop"
-          ? ["showRecessField", "dimensionLayoutField", "groundOutlineField", "groundOutlineSizeField", "groundOutlineXField", "groundOutlineZField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "depthField", "heightField"]
-          : ["showRecessField", "dimensionLayoutField", "groundOutlineField", "groundOutlineSizeField", "groundOutlineXField", "groundOutlineZField", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "heightField", "depthField"];
+          ? ["dimensionLayoutField", "specialEffectsPanel", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "depthField", "heightField"]
+          : ["dimensionLayoutField", "specialEffectsPanel", "dimensionSectionTitle", "aspectRatioField", "lockAspectRatioField", "widthField", "heightField", "depthField"];
         for (const id of orderedIds) {
           group.appendChild(document.querySelector(`#${id}`));
         }
@@ -2564,7 +2808,46 @@
         return Number.parseInt(match[1], 16);
       }
 
+      function getBackgroundPlaneMode() {
+        return COLORS.backgroundPlane === FIXED_COLOR_VALUES.backgroundPlaneGray ? "gray" : "white";
+      }
+
+      function setBackgroundPlaneMode(mode) {
+        COLORS.backgroundPlane =
+          mode === "gray" ? FIXED_COLOR_VALUES.backgroundPlaneGray : FIXED_COLOR_VALUES.backgroundPlaneWhite;
+        COLORS.recessBack =
+          mode === "gray" ? FIXED_COLOR_VALUES.recessOnGrayBackground : FIXED_COLOR_VALUES.recessOnWhiteBackground;
+        syncUnifiedRecessColor();
+      }
+
+      function setWallLineVisible(visible) {
+        state.showWallLines = visible ? "true" : "false";
+        COLORS.wallLine = FIXED_COLOR_VALUES.wallLineVisible;
+        COLORS.wallLineSoft = FIXED_COLOR_VALUES.wallLineVisible;
+      }
+
+      function syncUnifiedRecessColor() {
+        COLORS.recessSide = COLORS.recessBack;
+        COLORS.recessFloor = COLORS.recessBack;
+      }
+
+      function normalizeFixedColors() {
+        const wallLineWasVisible = state.showWallLines !== "false" && COLORS.wallLine !== 0xffffff;
+        const backgroundMode = getBackgroundPlaneMode();
+        COLORS.dimension = FIXED_COLOR_VALUES.dimension;
+        COLORS.objectEdge = FIXED_COLOR_VALUES.objectEdge;
+        COLORS.leftSide = FIXED_COLOR_VALUES.productSide;
+        setBackgroundPlaneMode(backgroundMode);
+        setWallLineVisible(wallLineWasVisible);
+        syncUnifiedRecessColor();
+      }
+
       function syncColorControls() {
+        normalizeFixedColors();
+        const backgroundSelect = document.querySelector("#backgroundPlaneSelect");
+        const wallLineCheckbox = document.querySelector("#wallLineVisibleCheckbox");
+        if (backgroundSelect) backgroundSelect.value = getBackgroundPlaneMode();
+        if (wallLineCheckbox) wallLineCheckbox.checked = state.showWallLines !== "false";
         const controls = document.querySelectorAll("[data-color-key]");
         for (const control of controls) {
           const value = colorToHex(COLORS[control.dataset.colorKey]);
@@ -2576,18 +2859,33 @@
         const parsed = parseHexColor(value);
         if (parsed === null || !(key in COLORS)) return;
         COLORS[key] = parsed;
+        if (key === "recessBack") syncUnifiedRecessColor();
         syncSceneColorMaterials();
         syncColorControls();
         rebuild();
       }
 
       function syncSceneColorMaterials() {
+        normalizeFixedColors();
+        const wallLineOpacity = state.showWallLines === "false" ? 0 : 0.62;
+        const softWallLineOpacity = state.showWallLines === "false" ? 0 : 0.46;
+        const wallLineStyle = strokeStyles.get(lineMaterials.wall);
+        const recessStructureStyle = strokeStyles.get(lineMaterials.recessStructure);
+        const softWallLineStyle = strokeStyles.get(lineMaterials.soft);
+        if (wallLineStyle) wallLineStyle.width = state.layoutMode === "wall" ? 0.01 : 0.004;
+        if (recessStructureStyle) recessStructureStyle.width = state.layoutMode === "wall" ? 0.01 : 0.004;
+        if (softWallLineStyle) softWallLineStyle.width = state.layoutMode === "wall" ? 0.0076 : 0.004;
         lineMaterials.wall.color.setHex(COLORS.wallLine);
+        lineMaterials.recessStructure.color.setHex(COLORS.wallLine);
         lineMaterials.soft.color.setHex(COLORS.wallLineSoft);
+        lineMaterials.wall.opacity = wallLineOpacity;
+        lineMaterials.recessStructure.opacity = wallLineOpacity;
+        lineMaterials.soft.opacity = softWallLineOpacity;
         lineMaterials.edge.color.setHex(COLORS.objectEdge);
         lineMaterials.applianceDetail.color.setHex(COLORS.applianceDetail);
         lineMaterials.applianceGroove.color.setHex(COLORS.applianceGroove);
         lineMaterials.dimension.color.setHex(COLORS.dimension);
+        lineMaterials.groundOutline.color.setHex(COLORS.dimension);
         for (const [sourceMaterial, strokeMaterial] of segmentStrokeMaterials) {
           strokeMaterial.color.copy(sourceMaterial.color);
           strokeMaterial.opacity = sourceMaterial.opacity;
@@ -2705,6 +3003,7 @@
             for (const key of Object.keys(COLORS)) {
               if (Number.isFinite(saved.colors[key])) COLORS[key] = saved.colors[key];
             }
+            normalizeFixedColors();
             syncSceneColorMaterials();
           }
           activeVariantIndex = clamp(Number(saved.activeVariantIndex) || 0, 0, variants.length - 1);
@@ -2904,6 +3203,14 @@
         applyVariant(restoreIndex);
       }
 
+      async function exportCurrentView() {
+        await waitStickerReady();
+        await waitTextFontReady();
+        await waitFrame();
+        render();
+        await downloadCanvas("size-diagram-current.png");
+      }
+
       async function exportAllVariants() {
         const restoreIndex = activeVariantIndex;
         for (let i = 0; i < variants.length; i += 1) {
@@ -3011,7 +3318,7 @@
         });
 
         document.querySelector("#exportCurrent").addEventListener("click", () => {
-          exportVariant(activeVariantIndex);
+          exportCurrentView();
         });
 
         document.querySelector("#exportAll").addEventListener("click", () => {
@@ -3043,37 +3350,64 @@
             applyColor(input.dataset.colorKey, input.value);
           });
         });
+
+        document.querySelector("#backgroundPlaneSelect").addEventListener("change", (event) => {
+          setBackgroundPlaneMode(event.target.value);
+          syncSceneColorMaterials();
+          syncColorControls();
+          rebuild();
+        });
+
+        document.querySelector("#wallLineVisibleCheckbox").addEventListener("change", (event) => {
+          setWallLineVisible(event.target.checked);
+          syncSceneColorMaterials();
+          syncColorControls();
+          rebuild();
+        });
       }
 
       function bindViewportCameraControls() {
         const sheet = document.querySelector(".drawing-sheet");
         const dragState = {
           active: false,
+          mode: "rotate",
+          pointerId: null,
           x: 0,
           y: 0
         };
         sheet.addEventListener("pointerdown", (event) => {
           if (event.target === stickerOverlay || event.target.closest(".text-overlay")) return;
-          if (event.button !== 0) return;
+          if (event.button !== 0 && event.button !== 1) return;
+          event.preventDefault();
           dragState.active = true;
+          dragState.mode = event.button === 1 ? "pan" : "rotate";
+          dragState.pointerId = event.pointerId;
           dragState.x = event.clientX;
           dragState.y = event.clientY;
           sheet.classList.add("is-dragging");
           sheet.setPointerCapture(event.pointerId);
         });
         sheet.addEventListener("pointermove", (event) => {
-          if (!dragState.active) return;
+          if (!dragState.active || event.pointerId !== dragState.pointerId) return;
           const dx = event.clientX - dragState.x;
           const dy = event.clientY - dragState.y;
           dragState.x = event.clientX;
           dragState.y = event.clientY;
+          if (dragState.mode === "pan") {
+            const panScale = state.cameraDistance * 0.0016;
+            setCameraControl("cameraPanX", state.cameraPanX - dx * panScale);
+            setCameraControl("cameraPanY", state.cameraPanY + dy * panScale);
+            return;
+          }
           const yawDelta = dx * 0.08;
           setCameraControl("cameraYaw", state.cameraYaw + (state.layoutMode === "tabletop" ? -yawDelta : yawDelta));
           setCameraControl("cameraPitch", state.cameraPitch + dy * 0.08);
         });
         const endDrag = (event) => {
-          if (!dragState.active) return;
+          if (!dragState.active || event.pointerId !== dragState.pointerId) return;
           dragState.active = false;
+          dragState.mode = "rotate";
+          dragState.pointerId = null;
           sheet.classList.remove("is-dragging");
           if (sheet.hasPointerCapture(event.pointerId)) {
             sheet.releasePointerCapture(event.pointerId);
@@ -3153,9 +3487,7 @@
 
       function bindTextControls() {
         const sheet = document.querySelector(".drawing-sheet");
-        const editor = document.querySelector("#textEditor");
-        const sizeRange = document.querySelector("#textFontSizeRange");
-        const sizeNumber = document.querySelector("#textFontSizeNumber");
+        const sizeSelect = document.querySelector("#textFontSizeSelect");
 
         document.querySelector("#addTextItem").addEventListener("click", () => {
           textItemSequence += 1;
@@ -3170,49 +3502,33 @@
           };
           state.textItems.push(item);
           selectedTextId = item.id;
-          syncTextOverlays();
-          editor.focus();
-          editor.select();
-        });
-
-        document.querySelector("#removeTextItem").addEventListener("click", () => {
-          if (!selectedTextId) return;
-          state.textItems = state.textItems.filter((item) => item.id !== selectedTextId);
-          selectedTextId = state.textItems[0]?.id || null;
-          syncTextOverlays();
-        });
-
-        editor.addEventListener("input", () => {
-          const item = getSelectedTextItem();
-          if (!item) return;
-          item.text = editor.value;
-          const overlay = Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === item.id);
-          if (overlay) {
-            const handle = overlay.querySelector(".text-rotate-handle");
-            overlay.textContent = item.text || " ";
-            if (handle) overlay.appendChild(handle);
-          }
-          scheduleWorkspaceSave();
+          beginTextEditing(item.id);
         });
 
         const updateFontSize = (value) => {
           const item = getSelectedTextItem();
           if (!item) return;
-          item.fontSize = clamp(Number(value) || 32, 12, 120);
-          sizeRange.value = item.fontSize;
-          sizeNumber.value = item.fontSize;
-          const overlay = Array.from(textOverlayLayer.children).find((element) => element.dataset.textId === item.id);
+          item.fontSize = getStandardTextFontSize(value || 32);
+          sizeSelect.value = String(item.fontSize);
+          const overlay = getTextOverlayElement(item.id);
           if (overlay) overlay.style.fontSize = `${item.fontSize}px`;
           scheduleWorkspaceSave();
         };
-        sizeRange.addEventListener("input", () => updateFontSize(sizeRange.value));
-        sizeNumber.addEventListener("input", () => updateFontSize(sizeNumber.value));
+        sizeSelect.addEventListener("change", () => updateFontSize(sizeSelect.value));
 
         const drag = { active: false, mode: "move", id: null, pointerId: null, element: null, centerX: 0, centerY: 0, startAngle: 0, startRotation: 0 };
         textOverlayLayer.addEventListener("pointerdown", (event) => {
           const target = event.target.closest(".text-overlay");
           if (!target || event.button !== 0) return;
+          if (event.target.closest(".text-delete-button")) {
+            event.stopPropagation();
+            return;
+          }
+          if (target.classList.contains("is-editing") && event.target.closest(".text-overlay-content")) return;
           event.stopPropagation();
+          Array.from(textOverlayLayer.children).forEach((element) => {
+            if (element !== target) finishTextEditing(element);
+          });
           selectedTextId = target.dataset.textId;
           Array.from(textOverlayLayer.children).forEach((element) => {
             element.classList.toggle("is-selected", element.dataset.textId === selectedTextId);
@@ -3263,12 +3579,45 @@
         };
         textOverlayLayer.addEventListener("pointerup", endTextDrag);
         textOverlayLayer.addEventListener("pointercancel", endTextDrag);
+        textOverlayLayer.addEventListener("click", (event) => {
+          const deleteButton = event.target.closest(".text-delete-button");
+          if (!deleteButton) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const overlay = deleteButton.closest(".text-overlay");
+          removeTextItem(overlay?.dataset.textId);
+        });
+        textOverlayLayer.addEventListener("input", (event) => {
+          const content = event.target.closest(".text-overlay-content");
+          const overlay = content?.closest(".text-overlay");
+          const item = overlay ? state.textItems.find((entry) => entry.id === overlay.dataset.textId) : null;
+          if (!content || !item) return;
+          item.text = getEditableText(content) || " ";
+          scheduleWorkspaceSave();
+        });
+        textOverlayLayer.addEventListener("focusout", (event) => {
+          const overlay = event.target.closest(".text-overlay");
+          if (overlay) finishTextEditing(overlay);
+        });
+        textOverlayLayer.addEventListener("keydown", (event) => {
+          if (!event.target.closest(".text-overlay-content")) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.target.blur();
+          }
+        });
+        textOverlayLayer.addEventListener("paste", (event) => {
+          const content = event.target.closest(".text-overlay-content");
+          if (!content) return;
+          event.preventDefault();
+          const text = event.clipboardData?.getData("text/plain") || "";
+          document.execCommand("insertText", false, text);
+        });
         textOverlayLayer.addEventListener("dblclick", (event) => {
           const target = event.target.closest(".text-overlay");
           if (!target) return;
-          selectTextItem(target.dataset.textId);
-          editor.focus();
-          editor.select();
+          event.stopPropagation();
+          beginTextEditing(target.dataset.textId);
         });
       }
 
