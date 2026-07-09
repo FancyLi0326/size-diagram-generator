@@ -16,9 +16,28 @@ size-diagram-generator/
   README.md               使用说明
   HANDOFF.md              项目交接说明
   CODEX_HANDOFF.md        给 Codex 继续开发的交接说明
+  fonts/                  项目内置字体文件
   assets/                 图片资源
   vendor/three.min.js     本地 Three.js 依赖
 ```
+
+## 字体放置
+
+为保证文字和数字严格统一，请把正版“方正兰亭黑简体 Regular”字体文件放到：
+
+`C:\Users\LFX\Documents\尺寸\size-diagram-generator\fonts\`
+
+推荐文件名：
+
+`FZLanTingHeiS-R-GB-Regular.woff2`
+
+如果手上只有其他格式，也可以使用以下任一文件名：
+
+- `FZLanTingHeiS-R-GB-Regular.woff`
+- `FZLanTingHeiS-R-GB-Regular.ttf`
+- `FZLanTingHeiS-R-GB-Regular.otf`
+
+放好后重新打开或刷新 `index.html` 即可生效。
 
 ## 当前功能
 

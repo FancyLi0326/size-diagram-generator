@@ -5,6 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>尺寸图生成器</title>
     <style>
+      @font-face {
+        font-family: "JiaqunFZLanTingHeiRegular";
+        src: url("./fonts/方正兰亭黑简体.TTF") format("truetype");
+        font-weight: 400;
+        font-style: normal;
+        font-display: block;
+      }
+
+      @font-face {
+        font-family: "JiaqunFZLanTingHeiMedium";
+        src: url("./fonts/方正兰亭中黑简体.TTF") format("truetype");
+        font-weight: 500;
+        font-style: normal;
+        font-display: block;
+      }
+
+      @font-face {
+        font-family: "JiaqunFZLanTingHeiDemi";
+        src: url("./fonts/方正兰亭准黑简体.TTF") format("truetype");
+        font-weight: 600;
+        font-style: normal;
+        font-display: block;
+      }
+
+      @font-face {
+        font-family: "JiaqunFZLanTingHeiBold";
+        src: url("./fonts/方正兰亭粗黑简体.TTF") format("truetype");
+        font-weight: 400;
+        font-style: normal;
+        font-display: block;
+      }
+
       :root {
         --ink: #1d1d1f;
         --muted: #6e6e73;
@@ -83,10 +115,23 @@
         white-space: nowrap;
       }
 
+      .ratio-indicator {
+        flex-shrink: 0;
+        padding: 6px 14px;
+        border: 1px solid var(--separator);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 560;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
       .workspace {
         flex: 1;
         display: grid;
-        grid-template-columns: 320px minmax(0, 1fr) 360px;
+        grid-template-columns: 372px minmax(0, 1fr) 372px;
         align-items: stretch;
         gap: 16px;
         min-height: 620px;
@@ -96,7 +141,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 14px;
         min-width: 0;
         height: 100%;
@@ -104,15 +149,23 @@
         border: 1px solid var(--separator);
         border-radius: 8px;
         background: var(--surface);
-        overflow: hidden;
+        overflow: auto;
         box-shadow: var(--shadow);
+      }
+
+      .preview-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        width: min(100%, calc((100vh - 210px) * var(--sheet-ratio-value)));
+        max-width: 900px;
+        margin-block: auto;
       }
 
       .drawing-sheet {
         position: relative;
-        width: min(100%, calc((100vh - 150px) * var(--sheet-ratio-value)));
-        max-width: 1077px;
-        max-height: 100%;
+        width: 100%;
         aspect-ratio: var(--sheet-ratio);
         background: #ffffff;
         border: 1px solid #d8d8de;
@@ -124,6 +177,39 @@
 
       .drawing-sheet.is-dragging {
         cursor: grabbing;
+      }
+
+      .table-band {
+        display: none;
+        width: 100%;
+        background: #ffffff;
+        padding: 2.2% 2.2%;
+        border: 1px solid #d8d8de;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+      }
+
+      .table-band.is-visible {
+        display: block;
+      }
+
+      .dimension-table {
+        display: grid;
+        width: 100%;
+        padding: 3% 0;
+        background: #f5f6fa;
+        border-radius: 14px;
+        color: #111111;
+        font-family: "JiaqunFZLanTingHeiRegular", "Microsoft YaHei", sans-serif;
+      }
+
+      .dimension-table .table-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 1.15;
+        white-space: nowrap;
       }
 
       #scene {
@@ -161,7 +247,7 @@
         max-width: 90%;
         transform: translate(-50%, -50%);
         color: #111111;
-        font-family: "FZLanTingHeiS-R-GB", "方正兰亭黑简体", sans-serif;
+        font-family: "JiaqunFZLanTingHeiRegular", sans-serif;
         font-weight: 400;
         line-height: 1.25;
         letter-spacing: 0;
@@ -285,7 +371,7 @@
       .variant-dock {
         width: min(100%, 1077px);
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 8px;
       }
 
@@ -651,6 +737,33 @@
         margin-top: 0;
       }
 
+      .table-cell-grid {
+        display: grid;
+        gap: 6px;
+        padding-top: 4px;
+      }
+
+      .table-cell-grid.is-hidden {
+        display: none;
+      }
+
+      .table-cell-grid input[type="text"] {
+        grid-column: auto;
+        height: 30px;
+        min-width: 0;
+      }
+
+      .table-warning {
+        margin-top: 4px;
+        color: var(--red);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .table-warning:empty {
+        display: none;
+      }
+
       label {
         font-size: 12px;
         font-weight: 520;
@@ -791,6 +904,24 @@
         line-height: 32px;
       }
 
+      .table-section {
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid #e6e6eb;
+      }
+
+      .table-section-title {
+        margin-bottom: 10px;
+        color: var(--ink);
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .panel.collapsed .table-section {
+        display: none;
+      }
+
       .color-field {
         display: grid;
         grid-template-columns: 86px 34px minmax(0, 1fr);
@@ -896,6 +1027,7 @@
         <div class="brand">
           <h1 class="app-title">尺寸图生成器</h1>
         </div>
+        <div class="ratio-indicator" id="ratioIndicator" aria-live="polite">当前图片比例 1：—</div>
       </header>
 
       <main class="workspace">
@@ -995,6 +1127,24 @@
               <input id="wallLineVisibleCheckbox" type="checkbox" />
             </div>
           </div>
+
+          <section class="table-section" id="tablePanel">
+            <div class="table-section-title">尺寸表格</div>
+            <div class="field" id="tableEnabledField">
+              <label for="tableEnabledCheckbox">添加表格</label>
+              <input id="tableEnabledCheckbox" data-key="tableEnabled" type="checkbox" />
+            </div>
+            <div class="field" id="tableRowCountField">
+              <label for="tableRowCount">行数</label>
+              <input id="tableRowCount" type="number" min="1" max="12" step="1" />
+            </div>
+            <div class="field" id="tableColCountField">
+              <label for="tableColCount">列数</label>
+              <input id="tableColCount" type="number" min="1" max="8" step="1" />
+            </div>
+            <div class="table-cell-grid" id="tableCellGrid"></div>
+            <div class="table-warning" id="tableWarning"></div>
+          </section>
         </aside>
 
         <section class="preview-pane">
@@ -1005,10 +1155,15 @@
               <button class="ratio-tab" type="button" data-output-ratio="16:9">16:9</button>
             </div>
           </div>
-          <div class="drawing-sheet">
-            <canvas id="scene" aria-label="墙面凸出与凹入体块的三维尺寸线稿"></canvas>
-            <img class="sticker-overlay is-hidden" id="stickerOverlay" alt="PNG 贴片" draggable="false" />
-            <div id="textOverlayLayer"></div>
+          <div class="preview-stack">
+            <div class="drawing-sheet">
+              <canvas id="scene" aria-label="墙面凸出与凹入体块的三维尺寸线稿"></canvas>
+              <img class="sticker-overlay is-hidden" id="stickerOverlay" alt="PNG 贴片" draggable="false" />
+              <div id="textOverlayLayer"></div>
+            </div>
+            <div class="table-band" id="tableBand">
+              <div class="dimension-table" id="dimensionTablePreview"></div>
+            </div>
           </div>
           <div class="variant-dock" id="variantDock" aria-label="方案预览"></div>
           <div class="variant-actions">
@@ -1077,10 +1232,14 @@
             <section class="control-group overlay-tool">
               <div class="group-title">文字</div>
               <div class="field text-size-field">
+                <label for="textFontFamilySelect">字体</label>
+                <select id="textFontFamilySelect"></select>
+              </div>
+              <div class="field text-size-field">
                 <label for="textFontSizeSelect">尺寸标注字号</label>
                 <select id="textFontSizeSelect">
-                  <option value="32">标准10号字</option>
-                  <option value="28">最小9号字</option>
+                  <option value="30">标准10号字</option>
+                  <option value="26">最小9号字</option>
                 </select>
               </div>
               <div class="button-row text-actions">
@@ -1155,12 +1314,292 @@
         stickerX: 0.5,
         stickerY: 0.15,
         stickerScale: 0.2,
-        textItems: []
+        textItems: [],
+        tableEnabled: "false",
+        tableJson: ""
       };
       const variantKeys = Object.keys(state);
-      const STANDARD_TEXT_FONT_SIZES = [28, 32];
+      const STANDARD_TEXT_FONT_SIZES = [26, 30];
+      const TEXT_FONT_FAMILIES = [
+        { label: "方正兰亭黑简体", value: "JiaqunFZLanTingHeiRegular" },
+        { label: "方正兰亭中黑简体", value: "JiaqunFZLanTingHeiMedium" },
+        { label: "方正兰亭准黑简体", value: "JiaqunFZLanTingHeiDemi" },
+        { label: "方正兰亭粗黑简体", value: "JiaqunFZLanTingHeiBold" }
+      ];
+      const DEFAULT_TEXT_FONT_FAMILY = TEXT_FONT_FAMILIES[0].value;
+      const TEXT_FONT_STACK_SUFFIX = ', "Microsoft YaHei", sans-serif';
+      function getStandardTextFontFamily(value) {
+        return TEXT_FONT_FAMILIES.some((font) => font.value === value)
+          ? value
+          : DEFAULT_TEXT_FONT_FAMILY;
+      }
+      function getTextFontStack(value) {
+        return `"${getStandardTextFontFamily(value)}"${TEXT_FONT_STACK_SUFFIX}`;
+      }
+
+      // ===== 尺寸表格 =====
+      const TABLE_MAX_COLS = 8;
+      const TABLE_MAX_ROWS = 12;
+      const TABLE_COMBINED_RATIO_LIMIT = 0.95;
+      // 表头（第一行 + 第一列）用中黑，其余用常规黑，均固定不可调
+      const TABLE_HEADER_FONT_STACK = getTextFontStack("JiaqunFZLanTingHeiMedium");
+      const TABLE_BODY_FONT_STACK = getTextFontStack("JiaqunFZLanTingHeiRegular");
+      function isTableHeaderCell(row, col) {
+        return row === 0 || col === 0;
+      }
+      function getTableCellFontStack(row, col) {
+        return isTableHeaderCell(row, col) ? TABLE_HEADER_FONT_STACK : TABLE_BODY_FONT_STACK;
+      }
+      // 表格几何比例（相对表格宽度 W），预览、导出、比例校验共用
+      // 白边：左右固定；上下正常用 Max，逼近 0.95 时可压缩到 Min（优先压上，再压下）
+      const TABLE_METRICS = {
+        rowHeight: 0.072,
+        innerPadY: 0.018,
+        sideMargin: 0.0195,
+        topMarginMax: 0.03,
+        topMarginMin: 0.004,
+        bottomMarginMax: 0.0195,
+        bottomMarginMin: 0.006,
+        corner: 0.018,
+        fontRatio: 0.45,
+        col0PadX: 0.05
+      };
+      const DEFAULT_TABLE_MODEL = {
+        rows: 2,
+        cols: 4,
+        cells: [
+          ["单位(mm)", "长", "宽", "高"],
+          ["产品尺寸", "", "", ""]
+        ]
+      };
+      let tableModel = cloneTableModel(DEFAULT_TABLE_MODEL);
+
+      function cloneTableModel(model) {
+        return {
+          rows: model.rows,
+          cols: model.cols,
+          cells: model.cells.map((row) => row.slice())
+        };
+      }
+
+      function normalizeTableModel(model) {
+        const rows = clamp(Math.round(Number(model?.rows) || 1), 1, TABLE_MAX_ROWS);
+        const cols = clamp(Math.round(Number(model?.cols) || 1), 1, TABLE_MAX_COLS);
+        const source = Array.isArray(model?.cells) ? model.cells : [];
+        const cells = [];
+        for (let r = 0; r < rows; r += 1) {
+          const row = [];
+          for (let c = 0; c < cols; c += 1) {
+            const value = source[r] && source[r][c] != null ? String(source[r][c]) : "";
+            row.push(value);
+          }
+          cells.push(row);
+        }
+        return { rows, cols, cells };
+      }
+
+      function resizeTableModel(rows, cols) {
+        tableModel = normalizeTableModel({ rows, cols, cells: tableModel.cells });
+      }
+
+      function parseTableFromState() {
+        let parsed = null;
+        if (state.tableJson) {
+          try {
+            parsed = JSON.parse(state.tableJson);
+          } catch (error) {
+            parsed = null;
+          }
+        }
+        tableModel = normalizeTableModel(parsed || DEFAULT_TABLE_MODEL);
+      }
+
+      function serializeTableToState() {
+        state.tableJson = JSON.stringify(tableModel);
+        scheduleWorkspaceSave();
+      }
+
+      // 灰色表体高度占宽度比例（不含上下白边）
+      function getTableGrayFraction(rows) {
+        const m = TABLE_METRICS;
+        return 2 * m.innerPadY + m.rowHeight * rows;
+      }
+
+      function getDiagramRatio() {
+        return canvas.height / Math.max(1, canvas.width);
+      }
+
+      // 计算上下白边（占宽度比例）：正常用 Max；逼近 0.95 时先压上、再压下。
+      // 返回 { top, bottom, fits }，fits=false 表示压到最小也放不下。
+      function computeBandMargins(rows) {
+        const m = TABLE_METRICS;
+        const base = getDiagramRatio() + getTableGrayFraction(rows);
+        let top = m.topMarginMax;
+        let bottom = m.bottomMarginMax;
+        let excess = base + top + bottom - TABLE_COMBINED_RATIO_LIMIT;
+        if (excess > 1e-9) {
+          const shaveTop = Math.min(excess, m.topMarginMax - m.topMarginMin);
+          top -= shaveTop;
+          excess -= shaveTop;
+          if (excess > 1e-9) {
+            const shaveBottom = Math.min(excess, m.bottomMarginMax - m.bottomMarginMin);
+            bottom -= shaveBottom;
+            excess -= shaveBottom;
+          }
+        }
+        return { top, bottom, fits: excess <= 1e-9 };
+      }
+
+      // 表格总高度（含上下白边），供预览缩放、导出、比例校验共用
+      function computeTableHeight(width, rows) {
+        const margins = computeBandMargins(rows);
+        return width * (margins.top + getTableGrayFraction(rows) + margins.bottom);
+      }
+
+      // 拼接后整图 高/宽 比例（与像素缩放无关）
+      function getCombinedRatio(rows) {
+        const margins = computeBandMargins(rows);
+        return getDiagramRatio() + margins.top + getTableGrayFraction(rows) + margins.bottom;
+      }
+
+      // 在不超过上限的前提下，允许的最大表格行数（压到最小白边仍能放下即可）
+      function getMaxTableRows() {
+        for (let rows = TABLE_MAX_ROWS; rows >= 1; rows -= 1) {
+          if (computeBandMargins(rows).fits) return rows;
+        }
+        return 1;
+      }
+
+      function isTableEnabled() {
+        return state.tableEnabled === "true";
+      }
+
+      // 顶部“当前图片比例”标注：固定宽为 1，显示拼接后（或纯示意图）的 高/宽
+      function updateRatioIndicator() {
+        const el = document.querySelector("#ratioIndicator");
+        if (!el) return;
+        const w = Math.max(1, canvas.width);
+        const tableHeight = isTableEnabled() ? computeTableHeight(w, tableModel.rows) : 0;
+        const ratio = (canvas.height + tableHeight) / w;
+        el.textContent = `当前图片比例 1：${ratio.toFixed(2)}`;
+      }
+
+      // 预览：从 tableModel 生成灰色圆角表格（像素尺寸与导出用同一套 TABLE_METRICS，保证所见即所得）
+      function renderTablePreview() {
+        const stack = document.querySelector(".preview-stack");
+        const band = document.querySelector("#tableBand");
+        const table = document.querySelector("#dimensionTablePreview");
+        if (!band || !table || !stack) return;
+        band.classList.toggle("is-visible", isTableEnabled());
+        const m = TABLE_METRICS;
+        const W = Math.max(1, stack.getBoundingClientRect().width);
+        const margins = computeBandMargins(tableModel.rows);
+        band.style.padding = `${W * margins.top}px ${W * m.sideMargin}px ${W * margins.bottom}px`;
+        table.style.gridTemplateColumns = `repeat(${tableModel.cols}, minmax(0, 1fr))`;
+        table.style.padding = `${W * m.innerPadY}px 0`;
+        table.style.borderRadius = `${W * m.corner}px`;
+        table.style.fontSize = `${W * m.rowHeight * m.fontRatio}px`;
+        table.innerHTML = "";
+        for (let r = 0; r < tableModel.rows; r += 1) {
+          for (let c = 0; c < tableModel.cols; c += 1) {
+            const cell = document.createElement("div");
+            cell.className = "table-cell";
+            cell.style.height = `${W * m.rowHeight}px`;
+            cell.style.fontFamily = getTableCellFontStack(r, c);
+            cell.textContent = tableModel.cells[r][c] || "";
+            table.appendChild(cell);
+          }
+        }
+      }
+
+      // 左侧参数栏：生成 行×列 单元格输入网格
+      function renderTableEditor() {
+        const rowInput = document.querySelector("#tableRowCount");
+        const colInput = document.querySelector("#tableColCount");
+        const grid = document.querySelector("#tableCellGrid");
+        if (rowInput) rowInput.value = String(tableModel.rows);
+        if (colInput) colInput.value = String(tableModel.cols);
+        if (!grid) return;
+        grid.style.gridTemplateColumns = `repeat(${tableModel.cols}, minmax(0, 1fr))`;
+        grid.innerHTML = "";
+        for (let r = 0; r < tableModel.rows; r += 1) {
+          for (let c = 0; c < tableModel.cols; c += 1) {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = tableModel.cells[r][c] || "";
+            input.dataset.row = String(r);
+            input.dataset.col = String(c);
+            input.placeholder = r === 0 ? "表头" : "";
+            input.addEventListener("input", () => {
+              const row = Number(input.dataset.row);
+              const col = Number(input.dataset.col);
+              if (tableModel.cells[row]) tableModel.cells[row][col] = input.value;
+              serializeTableToState();
+              renderTablePreview();
+            });
+            grid.appendChild(input);
+          }
+        }
+      }
+
+      // 超限红字提示
+      function syncTableWarning() {
+        const warning = document.querySelector("#tableWarning");
+        if (!warning) return;
+        if (isTableEnabled() && getCombinedRatio(tableModel.rows) > TABLE_COMBINED_RATIO_LIMIT) {
+          warning.textContent =
+            "当前拼接高宽比已超过上限（1:0.95），请切换到更矮更宽的输出比例（如 16:9）或减少行数。";
+        } else {
+          warning.textContent = "";
+        }
+      }
+
+      // 整体同步：预览 + 编辑器 + 提示
+      function syncTable() {
+        parseTableFromState();
+        renderTableEditor();
+        renderTablePreview();
+        syncTableWarning();
+        updateRatioIndicator();
+      }
+
+      function bindTableControls() {
+        const rowInput = document.querySelector("#tableRowCount");
+        const colInput = document.querySelector("#tableColCount");
+
+        if (rowInput) {
+          rowInput.addEventListener("change", () => {
+            const requested = clamp(Math.round(Number(rowInput.value) || 1), 1, TABLE_MAX_ROWS);
+            const maxRows = getMaxTableRows();
+            let rows = requested;
+            if (requested > tableModel.rows && requested > maxRows) {
+              rows = Math.max(tableModel.rows, maxRows);
+              window.alert(
+                "当前拼接高宽比已达上限（1:0.95），无法再增加行数。\n请切换到更矮更宽的输出比例（如 16:9）后再试。"
+              );
+            }
+            resizeTableModel(rows, tableModel.cols);
+            serializeTableToState();
+            renderTableEditor();
+            renderTablePreview();
+            syncTableWarning();
+            updateRatioIndicator();
+          });
+        }
+
+        if (colInput) {
+          colInput.addEventListener("change", () => {
+            const cols = clamp(Math.round(Number(colInput.value) || 1), 1, TABLE_MAX_COLS);
+            resizeTableModel(tableModel.rows, cols);
+            serializeTableToState();
+            renderTableEditor();
+            renderTablePreview();
+          });
+        }
+      }
+
       let activeVariantIndex = 0;
-      const variants = Array.from({ length: 6 }, () => null);
+      const variants = Array.from({ length: 5 }, () => null);
       let selectedTextId = null;
       let textItemSequence = 0;
       let persistenceReady = false;
@@ -2401,6 +2840,8 @@
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         render();
+        if (isTableEnabled()) renderTablePreview();
+        updateRatioIndicator();
       }
 
       function render() {
@@ -2441,13 +2882,19 @@
         const item = getSelectedTextItem();
         const sizeSelect = document.querySelector("#textFontSizeSelect");
         sizeSelect.disabled = !item;
-        sizeSelect.value = String(getStandardTextFontSize(item?.fontSize || 32));
+        sizeSelect.value = String(getStandardTextFontSize(item?.fontSize || 30));
+        const familySelect = document.querySelector("#textFontFamilySelect");
+        if (familySelect) {
+          familySelect.disabled = !item;
+          if (item) familySelect.value = getStandardTextFontFamily(item.fontFamily);
+        }
       }
 
       function syncTextOverlays() {
         for (const item of state.textItems) {
           if (!Number.isFinite(item.rotation)) item.rotation = 0;
-          item.fontSize = getStandardTextFontSize(item.fontSize || 32);
+          item.fontSize = getStandardTextFontSize(item.fontSize || 30);
+          item.fontFamily = getStandardTextFontFamily(item.fontFamily);
         }
         textOverlayLayer.innerHTML = "";
         for (const item of state.textItems) {
@@ -2461,6 +2908,7 @@
           element.style.left = `${item.x * 100}%`;
           element.style.top = `${item.y * 100}%`;
           element.style.fontSize = `${item.fontSize}px`;
+          element.style.fontFamily = getTextFontStack(item.fontFamily);
           element.style.transform = `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`;
           if (item.id === selectedTextId) {
             const deleteButton = document.createElement("button");
@@ -2552,6 +3000,10 @@
         });
         document.querySelector("#cameraYawField").classList.toggle("is-hidden", false);
         document.querySelector("#cameraPitchField").classList.toggle("is-hidden", false);
+        const tableOn = isTableEnabled();
+        document.querySelector("#tableRowCountField").classList.toggle("is-hidden", !tableOn);
+        document.querySelector("#tableColCountField").classList.toggle("is-hidden", !tableOn);
+        document.querySelector("#tableCellGrid").classList.toggle("is-hidden", !tableOn);
       }
 
       function syncOutputRatio() {
@@ -3059,6 +3511,7 @@
         updateCamera();
         resize();
         rebuild();
+        syncTable();
         renderVariantDock();
       }
 
@@ -3089,25 +3542,24 @@
 
       function waitTextFontReady() {
         if (!document.fonts?.load) return Promise.resolve();
-        return document.fonts.load('36px "FZLanTingHeiS-R-GB", "方正兰亭黑简体"');
+        return Promise.all(
+          TEXT_FONT_FAMILIES.map((font) => document.fonts.load(`36px "${font.value}"`))
+        ).catch(() => {});
       }
 
-      function createCompositeCanvas() {
-        const output = document.createElement("canvas");
-        output.width = canvas.width;
-        output.height = canvas.height;
-        const context = output.getContext("2d");
+      // 把示意图（3D 画布 + 贴片 + 文字）绘制到 context 顶部区域
+      function drawDiagramOnto(context, diagramWidth, diagramHeight) {
         context.drawImage(canvas, 0, 0);
         if (state.stickerSrc && stickerOverlay.complete && stickerOverlay.naturalWidth > 0) {
-          const stickerWidth = output.width * state.stickerScale;
+          const stickerWidth = diagramWidth * state.stickerScale;
           const stickerHeight = stickerWidth * (stickerOverlay.naturalHeight / stickerOverlay.naturalWidth);
-          const stickerLeft = output.width * state.stickerX - stickerWidth / 2;
-          const stickerTop = output.height * state.stickerY - stickerHeight / 2;
+          const stickerLeft = diagramWidth * state.stickerX - stickerWidth / 2;
+          const stickerTop = diagramHeight * state.stickerY - stickerHeight / 2;
           context.drawImage(stickerOverlay, stickerLeft, stickerTop, stickerWidth, stickerHeight);
         }
         const sheet = document.querySelector(".drawing-sheet");
         const previewWidth = Math.max(1, sheet.getBoundingClientRect().width);
-        const exportScale = output.width / previewWidth;
+        const exportScale = diagramWidth / previewWidth;
         context.fillStyle = "#111111";
         context.textAlign = "center";
         context.textBaseline = "middle";
@@ -3116,9 +3568,9 @@
           const lineHeight = fontSize * 1.25;
           const lines = String(item.text || "").split("\n");
           const blockHeight = lineHeight * Math.max(1, lines.length);
-          const centerX = output.width * item.x;
-          const centerY = output.height * item.y;
-          context.font = `${fontSize}px "FZLanTingHeiS-R-GB", "方正兰亭黑简体", sans-serif`;
+          const centerX = diagramWidth * item.x;
+          const centerY = diagramHeight * item.y;
+          context.font = `${fontSize}px ${getTextFontStack(item.fontFamily)}`;
           context.save();
           context.translate(centerX, centerY);
           context.rotate(THREE.MathUtils.degToRad(item.rotation || 0));
@@ -3128,8 +3580,103 @@
           });
           context.restore();
         }
+      }
+
+      // 仅示意图
+      function createDiagramCanvas() {
+        const output = document.createElement("canvas");
+        output.width = canvas.width;
+        output.height = canvas.height;
+        const context = output.getContext("2d");
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, output.width, output.height);
+        drawDiagramOnto(context, output.width, output.height);
         return output;
       }
+
+      // 仅表格（未启用或 0 行时返回 null）
+      function createTableCanvas() {
+        if (!isTableEnabled()) return null;
+        const width = canvas.width;
+        const tableHeight = computeTableHeight(width, tableModel.rows);
+        const output = document.createElement("canvas");
+        output.width = width;
+        output.height = Math.max(1, Math.round(tableHeight));
+        const context = output.getContext("2d");
+        drawTableToCanvas(context, width, 0, tableHeight);
+        return output;
+      }
+
+      // 示意图 + 表格 拼接整体
+      function createCompositeCanvas() {
+        const output = document.createElement("canvas");
+        const diagramWidth = canvas.width;
+        const diagramHeight = canvas.height;
+        const tableOn = isTableEnabled();
+        const tableHeight = tableOn ? computeTableHeight(diagramWidth, tableModel.rows) : 0;
+        output.width = diagramWidth;
+        output.height = diagramHeight + tableHeight;
+        const context = output.getContext("2d");
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, output.width, output.height);
+        drawDiagramOnto(context, diagramWidth, diagramHeight);
+        if (tableOn) {
+          drawTableToCanvas(context, diagramWidth, diagramHeight, tableHeight);
+        }
+        return output;
+      }
+
+      // 在画布下方绘制灰色圆角表格（与预览、比例校验共用 TABLE_METRICS）
+      function drawTableToCanvas(context, width, top, bandHeight) {
+        const m = TABLE_METRICS;
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, top, width, bandHeight);
+
+        const margins = computeBandMargins(tableModel.rows);
+        const sideMargin = width * m.sideMargin;
+        const topMargin = width * margins.top;
+        const bottomMargin = width * margins.bottom;
+        const innerPadY = width * m.innerPadY;
+        const corner = width * m.corner;
+        const rowHeight = width * m.rowHeight;
+        const fontSize = rowHeight * m.fontRatio;
+
+        const tableX = sideMargin;
+        const tableY = top + topMargin;
+        const tableW = width - sideMargin * 2;
+        const tableH = bandHeight - topMargin - bottomMargin;
+
+        // 灰色圆角底
+        context.fillStyle = "#f5f6fa";
+        const r = Math.min(corner, tableW / 2, tableH / 2);
+        context.beginPath();
+        context.moveTo(tableX + r, tableY);
+        context.arcTo(tableX + tableW, tableY, tableX + tableW, tableY + tableH, r);
+        context.arcTo(tableX + tableW, tableY + tableH, tableX, tableY + tableH, r);
+        context.arcTo(tableX, tableY + tableH, tableX, tableY, r);
+        context.arcTo(tableX, tableY, tableX + tableW, tableY, r);
+        context.closePath();
+        context.fill();
+
+        // 文字
+        const cols = tableModel.cols;
+        const rows = tableModel.rows;
+        const colWidth = tableW / cols;
+        const contentTop = tableY + innerPadY;
+        context.fillStyle = "#111111";
+        context.textBaseline = "middle";
+        context.textAlign = "center";
+        for (let rIdx = 0; rIdx < rows; rIdx += 1) {
+          const cellCenterY = contentTop + rowHeight * (rIdx + 0.5);
+          for (let cIdx = 0; cIdx < cols; cIdx += 1) {
+            const text = String(tableModel.cells[rIdx][cIdx] || "");
+            if (!text) continue;
+            context.font = `${fontSize}px ${getTableCellFontStack(rIdx, cIdx)}`;
+            context.fillText(text, tableX + colWidth * (cIdx + 0.5), cellCenterY);
+          }
+        }
+      }
+
 
       function renderVariantDock() {
         const dock = document.querySelector("#variantDock");
@@ -3169,9 +3716,13 @@
         });
       }
 
-      function downloadCanvas(filename) {
+      function downloadCanvas(sourceCanvas, filename) {
         return new Promise((resolve) => {
-          createCompositeCanvas().toBlob((blob) => {
+          if (!sourceCanvas) {
+            resolve();
+            return;
+          }
+          sourceCanvas.toBlob((blob) => {
             if (!blob) {
               resolve();
               return;
@@ -3191,6 +3742,16 @@
         });
       }
 
+      // 导出一套图：整体；启用表格时额外导出 示意图 + 表格
+      async function downloadCurrentSet(suffix) {
+        const tag = suffix ? `-${suffix}` : "";
+        await downloadCanvas(createCompositeCanvas(), `size-diagram${tag}.png`);
+        if (isTableEnabled()) {
+          await downloadCanvas(createDiagramCanvas(), `size-diagram${tag}-示意图.png`);
+          await downloadCanvas(createTableCanvas(), `size-diagram${tag}-表格.png`);
+        }
+      }
+
       async function exportVariant(index) {
         if (!variants[index]) return;
         const restoreIndex = activeVariantIndex;
@@ -3199,7 +3760,7 @@
         await waitTextFontReady();
         await waitFrame();
         render();
-        await downloadCanvas(`size-diagram-${String(index + 1).padStart(2, "0")}.png`);
+        await downloadCurrentSet(String(index + 1).padStart(2, "0"));
         applyVariant(restoreIndex);
       }
 
@@ -3208,7 +3769,7 @@
         await waitTextFontReady();
         await waitFrame();
         render();
-        await downloadCanvas("size-diagram-current.png");
+        await downloadCurrentSet("current");
       }
 
       async function exportAllVariants() {
@@ -3220,7 +3781,7 @@
           await waitTextFontReady();
           await waitFrame();
           render();
-          await downloadCanvas(`size-diagram-${String(i + 1).padStart(2, "0")}.png`);
+          await downloadCurrentSet(String(i + 1).padStart(2, "0"));
         }
         applyVariant(restoreIndex);
       }
@@ -3278,6 +3839,13 @@
             } else if (key === "outputRatio") {
               syncOutputRatio();
               resize();
+              renderTablePreview();
+              syncTableWarning();
+              updateRatioIndicator();
+            } else if (key === "tableEnabled") {
+              renderTablePreview();
+              syncTableWarning();
+              updateRatioIndicator();
             } else if (key === "stickerScale") {
               syncStickerOverlay();
             }
@@ -3293,6 +3861,8 @@
             if (key === "layoutMode") {
               updateCamera();
               rebuild();
+            } else if (key === "tableEnabled") {
+              // 表格改动不影响 3D 场景，无需 rebuild
             } else if (key === "stickerScale") {
               syncStickerOverlay();
               renderVariantDock();
@@ -3312,6 +3882,7 @@
         bindViewportCameraControls();
         bindStickerControls();
         bindTextControls();
+        bindTableControls();
 
         document.querySelector("#togglePanel").addEventListener("click", () => {
           document.querySelector("#panel").classList.toggle("collapsed");
@@ -3488,6 +4059,17 @@
       function bindTextControls() {
         const sheet = document.querySelector(".drawing-sheet");
         const sizeSelect = document.querySelector("#textFontSizeSelect");
+        const familySelect = document.querySelector("#textFontFamilySelect");
+
+        if (familySelect && !familySelect.options.length) {
+          for (const font of TEXT_FONT_FAMILIES) {
+            const option = document.createElement("option");
+            option.value = font.value;
+            option.textContent = font.label;
+            familySelect.appendChild(option);
+          }
+          familySelect.value = DEFAULT_TEXT_FONT_FAMILY;
+        }
 
         document.querySelector("#addTextItem").addEventListener("click", () => {
           textItemSequence += 1;
@@ -3497,7 +4079,8 @@
             text: "请输入文字",
             x: 0.5 + offset,
             y: 0.2 + offset,
-            fontSize: 32,
+            fontSize: 30,
+            fontFamily: getStandardTextFontFamily(familySelect?.value),
             rotation: 0
           };
           state.textItems.push(item);
@@ -3508,13 +4091,25 @@
         const updateFontSize = (value) => {
           const item = getSelectedTextItem();
           if (!item) return;
-          item.fontSize = getStandardTextFontSize(value || 32);
+          item.fontSize = getStandardTextFontSize(value || 30);
           sizeSelect.value = String(item.fontSize);
           const overlay = getTextOverlayElement(item.id);
           if (overlay) overlay.style.fontSize = `${item.fontSize}px`;
           scheduleWorkspaceSave();
         };
         sizeSelect.addEventListener("change", () => updateFontSize(sizeSelect.value));
+
+        if (familySelect) {
+          familySelect.addEventListener("change", () => {
+            const item = getSelectedTextItem();
+            if (!item) return;
+            item.fontFamily = getStandardTextFontFamily(familySelect.value);
+            familySelect.value = item.fontFamily;
+            const overlay = getTextOverlayElement(item.id);
+            if (overlay) overlay.style.fontFamily = getTextFontStack(item.fontFamily);
+            scheduleWorkspaceSave();
+          });
+        }
 
         const drag = { active: false, mode: "move", id: null, pointerId: null, element: null, centerX: 0, centerY: 0, startAngle: 0, startRotation: 0 };
         textOverlayLayer.addEventListener("pointerdown", (event) => {
@@ -3634,8 +4229,14 @@
         updateCamera();
         resize();
         rebuild();
+        syncTable();
         persistenceReady = true;
         scheduleWorkspaceSave();
+
+        waitTextFontReady().then(() => {
+          syncTextOverlays();
+          renderTablePreview();
+        });
 
         window.perspectiveBlocks = {
           state,

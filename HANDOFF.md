@@ -11,6 +11,7 @@
 - 本地目录：`C:\Users\LFX\Documents\尺寸\size-diagram-generator`
 - 主文件：`index.html`
 - 本地依赖：`vendor/three.min.js`
+- 项目字体目录：`fonts/`
 - 说明文档：`README.md`
 - Codex 继续开发交接：`CODEX_HANDOFF.md`
 - 可直接打开：双击 `index.html`
@@ -20,6 +21,7 @@
 - 给同事继续开发时，请发送整个 `size-diagram-generator` 文件夹或 zip 包，不要只发送 `index.html`。
 - 对方解压后，进入文件夹并双击 `index.html` 即可使用。
 - Three.js 依赖在 `vendor/three.min.js`，不要删除。
+- 若要保证字体一致，请把正版方正兰亭黑简体 Regular 字体文件一起放在 `fonts/` 中。
 - 如果需要发给研发作为参考工具，建议同时附上 `HANDOFF.md` 和 `README.md`。
 - 如果只是给别人使用在线版本，可以直接发 GitHub Pages 链接。
 
