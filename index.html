@@ -451,8 +451,15 @@
         width: min(100%, 1077px);
         display: flex;
         align-items: center;
-        justify-content: flex-end;
-        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .toolbar-caption {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 560;
       }
 
       .overlay-tools {
@@ -1027,7 +1034,6 @@
         <div class="brand">
           <h1 class="app-title">尺寸图生成器</h1>
         </div>
-        <div class="ratio-indicator" id="ratioIndicator" aria-live="polite">当前图片比例 1：—</div>
       </header>
 
       <main class="workspace">
@@ -1052,6 +1058,13 @@
                 <button class="ratio-tab" type="button" data-dimension-layout="auto">自动</button>
                 <button class="ratio-tab" type="button" data-dimension-layout="front">样式1</button>
                 <button class="ratio-tab" type="button" data-dimension-layout="top">样式2</button>
+              </div>
+            </div>
+            <div class="field" id="dimensionStyleField">
+              <label>标注线样式</label>
+              <div class="ratio-tabs dimension-layout-tabs" aria-label="标注线样式">
+                <button class="ratio-tab" type="button" data-dimension-style="frame">尺寸帧</button>
+                <button class="ratio-tab" type="button" data-dimension-style="release">发布端</button>
               </div>
             </div>
             <details class="special-effects-panel" id="specialEffectsPanel">
@@ -1149,11 +1162,13 @@
 
         <section class="preview-pane">
           <div class="preview-toolbar" aria-label="图片规格">
+            <span class="toolbar-caption" id="ratioCaption">上半部分示意图比例</span>
             <div class="ratio-tabs" id="outputRatioTabs">
-              <button class="ratio-tab" type="button" data-output-ratio="3:2">3:2</button>
               <button class="ratio-tab" type="button" data-output-ratio="4:3">4:3</button>
+              <button class="ratio-tab" type="button" data-output-ratio="3:2">3:2</button>
               <button class="ratio-tab" type="button" data-output-ratio="16:9">16:9</button>
             </div>
+            <span class="ratio-indicator" id="ratioIndicator" aria-live="polite">当前整体图片比例 1：—</span>
           </div>
           <div class="preview-stack">
             <div class="drawing-sheet">
@@ -1179,8 +1194,8 @@
               <div class="group-title">视图</div>
               <div class="field">
                 <label for="cameraDistanceRange">镜距</label>
-                <input id="cameraDistanceRange" data-key="cameraDistance" type="range" min="5.8" max="25" step="0.01" />
-                <input id="cameraDistanceNumber" data-key="cameraDistance" type="number" min="5.8" max="25" step="0.01" />
+                <input id="cameraDistanceRange" data-key="cameraDistance" type="range" min="3.0" max="25" step="0.01" />
+                <input id="cameraDistanceNumber" data-key="cameraDistance" type="number" min="3.0" max="25" step="0.01" />
               </div>
               <div class="field">
                 <label for="cameraFovRange">透视</label>
@@ -1276,6 +1291,7 @@
 
       const FIXED_COLOR_VALUES = {
         dimension: 0xfa4e28,
+        dimensionRelease: 0xf08433,
         objectEdge: 0x000000,
         productSide: 0xd2d3d8,
         wallLineVisible: 0xa1a1a1,
@@ -1290,6 +1306,7 @@
         outputRatio: "3:2",
         showRecess: "true",
         dimensionLayout: "auto",
+        dimensionStyle: "frame",
         showGroundOutline: "false",
         groundOutlineSize: 0.36,
         groundOutlineX: 0,
@@ -1470,8 +1487,23 @@
         return 1;
       }
 
+      // 切换输出比例等导致画幅变矮时，若当前行数已超上限，自动收敛到最大可行行数并提示
+      function enforceTableRowLimit() {
+        if (!isTableEnabled()) return;
+        const maxRows = getMaxTableRows();
+        if (tableModel.rows > maxRows) {
+          const before = tableModel.rows;
+          resizeTableModel(maxRows, tableModel.cols);
+          serializeTableToState();
+          renderTableEditor();
+          window.alert(
+            `切换到当前输出比例后，拼接高宽比会超过上限（1:0.95）。\n表格最多只能放 ${maxRows} 行，已自动从 ${before} 行减为 ${maxRows} 行。`
+          );
+        }
+      }
+
       function isTableEnabled() {
-        return state.tableEnabled === "true";
+        return state.dimensionStyle !== "release" && state.tableEnabled === "true";
       }
 
       // 顶部“当前图片比例”标注：固定宽为 1，显示拼接后（或纯示意图）的 高/宽
@@ -1481,7 +1513,7 @@
         const w = Math.max(1, canvas.width);
         const tableHeight = isTableEnabled() ? computeTableHeight(w, tableModel.rows) : 0;
         const ratio = (canvas.height + tableHeight) / w;
-        el.textContent = `当前图片比例 1：${ratio.toFixed(2)}`;
+        el.textContent = `当前整体图片比例 1：${ratio.toFixed(2)}`;
       }
 
       // 预览：从 tableModel 生成灰色圆角表格（像素尺寸与导出用同一套 TABLE_METRICS，保证所见即所得）
@@ -1767,13 +1799,21 @@
         [lineMaterials.groundOutline, { width: 0.008, renderOrder: 20, depthTest: false }]
       ]);
       const segmentStrokeMaterials = new Map();
+      const dimensionArrowMaterial = new THREE.MeshBasicMaterial({
+        color: COLORS.dimension,
+        transparent: true,
+        opacity: 0.98,
+        depthTest: false,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
 
       function clearRoot() {
         while (root.children.length) {
           const child = root.children.pop();
           child.traverse((node) => {
             if (node.geometry) node.geometry.dispose();
-            const sharedMaterials = [...Object.values(lineMaterials), ...segmentStrokeMaterials.values()];
+            const sharedMaterials = [...Object.values(lineMaterials), ...segmentStrokeMaterials.values(), dimensionArrowMaterial];
             if (node.material && !sharedMaterials.includes(node.material)) {
               node.material.dispose();
             }
@@ -2096,7 +2136,12 @@
       }
 
       function addDimension(group, start, end, tickAxis, tickSize = 0.16) {
-        const axis = tickAxis.clone().normalize().multiplyScalar(tickSize * 0.38);
+        const perp = tickAxis.clone().normalize();
+        if (state.dimensionStyle === "release") {
+          addReleaseDimension(group, start, end, perp, tickSize);
+          return;
+        }
+        const axis = perp.clone().multiplyScalar(tickSize * 0.38);
         addSegments(
           group,
           [
@@ -2106,6 +2151,53 @@
           ],
           lineMaterials.dimension
         );
+      }
+
+      function addReleaseDimension(group, start, end, perp, tickSize) {
+        const dir = end.clone().sub(start);
+        const length = dir.length();
+        if (length <= 1e-6) return;
+        dir.normalize();
+        const axis = perp.clone().multiplyScalar(tickSize * 0.38);
+        addSegments(
+          group,
+          [
+            [start, end],
+            [start.clone().sub(axis), start.clone().add(axis)],
+            [end.clone().sub(axis), end.clone().add(axis)]
+          ],
+          lineMaterials.dimension
+        );
+        const arrowLen = tickSize * 0.5;
+        const arrowHalf = tickSize * 0.2;
+        const notchDepth = arrowLen * 0.8;
+        addArrowHead(group, start, dir.clone().negate(), perp, arrowLen, arrowHalf, notchDepth);
+        addArrowHead(group, end, dir, perp, arrowLen, arrowHalf, notchDepth);
+      }
+
+      // 燕尾箭头：尖端在 tip，尾部两侧为向后的尖角，中间向内凹出一个缺口
+      function addArrowHead(group, tip, out, perp, len, half, notchDepth) {
+        const back = tip.clone().addScaledVector(out, -len);
+        const barbR = back.clone().addScaledVector(perp, half);
+        const barbL = back.clone().addScaledVector(perp, -half);
+        const notch = tip.clone().addScaledVector(out, -notchDepth);
+        addFilledTriangle(group, tip, barbR, notch, dimensionArrowMaterial);
+        addFilledTriangle(group, tip, notch, barbL, dimensionArrowMaterial);
+      }
+
+      function addFilledTriangle(group, a, b, c, fill) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(
+            new Float32Array([a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z]),
+            3
+          )
+        );
+        geometry.computeVertexNormals();
+        const mesh = new THREE.Mesh(geometry, fill);
+        mesh.renderOrder = 21;
+        group.add(mesh);
       }
 
       function addWallAndFloor(group, recessOpening) {
@@ -2998,9 +3090,16 @@
         document.querySelectorAll("[data-dimension-layout]").forEach((button) => {
           button.classList.toggle("is-active", button.dataset.dimensionLayout === state.dimensionLayout);
         });
+        document.querySelectorAll("[data-dimension-style]").forEach((button) => {
+          button.classList.toggle("is-active", button.dataset.dimensionStyle === state.dimensionStyle);
+        });
         document.querySelector("#cameraYawField").classList.toggle("is-hidden", false);
         document.querySelector("#cameraPitchField").classList.toggle("is-hidden", false);
         const tableOn = isTableEnabled();
+        const releaseStyle = state.dimensionStyle === "release";
+        document.querySelector("#tablePanel").classList.toggle("is-hidden", releaseStyle);
+        document.querySelector("#outputRatioTabs").classList.toggle("is-hidden", releaseStyle);
+        document.querySelector("#ratioCaption").classList.toggle("is-hidden", releaseStyle);
         document.querySelector("#tableRowCountField").classList.toggle("is-hidden", !tableOn);
         document.querySelector("#tableColCountField").classList.toggle("is-hidden", !tableOn);
         document.querySelector("#tableCellGrid").classList.toggle("is-hidden", !tableOn);
@@ -3010,9 +3109,11 @@
         const ratioMap = {
           "3:2": { css: "3 / 2", value: 1.5 },
           "4:3": { css: "4 / 3", value: 4 / 3 },
-          "16:9": { css: "16 / 9", value: 16 / 9 }
+          "16:9": { css: "16 / 9", value: 16 / 9 },
+          "1:1": { css: "1 / 1", value: 1 }
         };
-        const ratio = ratioMap[state.outputRatio] || ratioMap["3:2"];
+        const effective = state.dimensionStyle === "release" ? "1:1" : state.outputRatio;
+        const ratio = ratioMap[effective] || ratioMap["3:2"];
         document.documentElement.style.setProperty("--sheet-ratio", ratio.css);
         document.documentElement.style.setProperty("--sheet-ratio-value", String(ratio.value));
         document.querySelectorAll("[data-output-ratio]").forEach((button) => {
@@ -3143,7 +3244,7 @@
           input.step = depthRange.step;
         }
         const distanceRange = {
-          min: isTabletop ? "3.8" : "5.8",
+          min: isTabletop ? "2.2" : "3.0",
           max: isTabletop ? "19" : "25",
           step: "0.01"
         };
@@ -3336,7 +3437,16 @@
         lineMaterials.edge.color.setHex(COLORS.objectEdge);
         lineMaterials.applianceDetail.color.setHex(COLORS.applianceDetail);
         lineMaterials.applianceGroove.color.setHex(COLORS.applianceGroove);
-        lineMaterials.dimension.color.setHex(COLORS.dimension);
+        lineMaterials.dimension.color.setHex(
+          state.dimensionStyle === "release"
+            ? FIXED_COLOR_VALUES.dimensionRelease
+            : COLORS.dimension
+        );
+        const dimensionStrokeStyle = strokeStyles.get(lineMaterials.dimension);
+        if (dimensionStrokeStyle) {
+          dimensionStrokeStyle.width = state.dimensionStyle === "release" ? 0.004 : 0.008;
+        }
+        dimensionArrowMaterial.color.copy(lineMaterials.dimension.color);
         lineMaterials.groundOutline.color.setHex(COLORS.dimension);
         for (const [sourceMaterial, strokeMaterial] of segmentStrokeMaterials) {
           strokeMaterial.color.copy(sourceMaterial.color);
@@ -3901,6 +4011,10 @@
             state.outputRatio = button.dataset.outputRatio;
             syncOutputRatio();
             resize();
+            enforceTableRowLimit();
+            renderTablePreview();
+            syncTableWarning();
+            updateRatioIndicator();
             renderVariantDock();
           });
         });
@@ -3910,6 +4024,20 @@
             state.dimensionLayout = button.dataset.dimensionLayout;
             syncControlVisibility();
             rebuild();
+          });
+        });
+
+        document.querySelectorAll("[data-dimension-style]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.dimensionStyle = button.dataset.dimensionStyle;
+            syncControlVisibility();
+            syncOutputRatio();
+            resize();
+            renderTablePreview();
+            syncTableWarning();
+            updateRatioIndicator();
+            rebuild();
+            renderVariantDock();
           });
         });
 
