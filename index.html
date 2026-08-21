@@ -244,15 +244,14 @@
         z-index: 6;
         left: 50%;
         top: 50%;
-        max-width: 90%;
+        max-width: none;
         transform: translate(-50%, -50%);
         color: #111111;
         font-family: "JiaqunFZLanTingHeiRegular", sans-serif;
         font-weight: 400;
         line-height: 1.25;
         letter-spacing: 0;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
+        white-space: pre;
         cursor: move;
         user-select: none;
         touch-action: none;
@@ -771,6 +770,82 @@
         display: none;
       }
 
+      .custom-dim-add {
+        width: 100%;
+        margin-top: 4px;
+      }
+
+      .custom-dim-empty {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+        padding: 8px 0 2px;
+      }
+
+      .custom-dim-card {
+        margin-top: 12px;
+        padding: 10px 10px 4px;
+        border: 1px solid #e6e6eb;
+        border-radius: 10px;
+        background: #fafafb;
+      }
+
+      .custom-dim-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .custom-dim-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      .custom-dim-delete {
+        border: none;
+        background: transparent;
+        color: var(--red);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 2px 4px;
+      }
+
+      .custom-dim-axis {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .custom-dim-axis button {
+        border: 1px solid #d6d6de;
+        background: #fff;
+        border-radius: 8px;
+        padding: 6px 0;
+        font-size: 12px;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .custom-dim-axis button.is-active {
+        border-color: var(--ink);
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .custom-dim-edge {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .custom-dim-sublabel {
+        font-size: 12px;
+        font-weight: 520;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
       label {
         font-size: 12px;
         font-weight: 520;
@@ -1103,13 +1178,13 @@
             <div class="subsection-title" id="dimensionSectionTitle">立方体尺寸</div>
             <div class="field" id="widthField">
               <label for="widthRange">宽</label>
-              <input id="widthRange" data-key="width" type="range" min="0.3" max="10.4" step="0.01" />
-              <input id="widthNumber" data-key="width" type="number" min="0.3" max="10.4" step="0.01" />
+              <input id="widthRange" data-key="width" type="range" min="0.3" max="20.8" step="0.01" />
+              <input id="widthNumber" data-key="width" type="number" min="0.3" max="20.8" step="0.01" />
             </div>
             <div class="field" id="heightField">
               <label for="heightRange">高</label>
-              <input id="heightRange" data-key="height" type="range" min="0.3" max="9.6" step="0.01" />
-              <input id="heightNumber" data-key="height" type="number" min="0.3" max="9.6" step="0.01" />
+              <input id="heightRange" data-key="height" type="range" min="0.3" max="19.2" step="0.01" />
+              <input id="heightNumber" data-key="height" type="number" min="0.3" max="19.2" step="0.01" />
             </div>
             <div class="field" id="aspectRatioField">
               <label for="aspectRatioNumber">宽高比</label>
@@ -1121,8 +1196,8 @@
             </div>
             <div class="field" id="depthField">
               <label for="depthRange">深</label>
-              <input id="depthRange" data-key="depth" type="range" min="0.45" max="2.7" step="0.01" />
-              <input id="depthNumber" data-key="depth" type="number" min="0.45" max="2.7" step="0.01" />
+              <input id="depthRange" data-key="depth" type="range" min="0.45" max="5.4" step="0.01" />
+              <input id="depthNumber" data-key="depth" type="number" min="0.45" max="5.4" step="0.01" />
             </div>
           </div>
 
@@ -1140,6 +1215,12 @@
               <input id="wallLineVisibleCheckbox" type="checkbox" />
             </div>
           </div>
+
+          <section class="table-section" id="customDimPanel">
+            <div class="table-section-title">自定义标注线</div>
+            <button class="text-button custom-dim-add" id="addCustomDim" type="button">添加标注线</button>
+            <div id="customDimList"></div>
+          </section>
 
           <section class="table-section" id="tablePanel">
             <div class="table-section-title">尺寸表格</div>
@@ -1333,7 +1414,8 @@
         stickerScale: 0.2,
         textItems: [],
         tableEnabled: "false",
-        tableJson: ""
+        tableJson: "",
+        customDims: []
       };
       const variantKeys = Object.keys(state);
       const STANDARD_TEXT_FONT_SIZES = [26, 30];
@@ -1630,10 +1712,227 @@
         }
       }
 
+      // ---- 自定义标注线（滑块版） ----
+      // 每个维度可选的"对齐端"：被对齐的一端与立方体对应的面齐平并跟随其变动，
+      // 调整长度时只有另一端移动。
+      const DIM_ALIGN_OPTIONS = {
+        width: [{ value: "left", label: "左端对齐" }, { value: "right", label: "右端对齐" }],
+        height: [{ value: "bottom", label: "下端对齐" }, { value: "top", label: "上端对齐" }],
+        depth: [{ value: "front", label: "前端对齐" }, { value: "back", label: "后端对齐" }]
+      };
+      const DIM_ALIGN_DEFAULT = { width: "left", height: "bottom", depth: "front" };
+
+      function normalizeDimAlign(item) {
+        const axis = item.axis === "height" ? "height" : item.axis === "depth" ? "depth" : "width";
+        const valid = DIM_ALIGN_OPTIONS[axis].some((opt) => opt.value === item.align);
+        if (!valid) item.align = DIM_ALIGN_DEFAULT[axis];
+        return item.align;
+      }
+
+      // 每个维度都有 4 条平行的边可供"吸附"。选中一条后，标注线会平行生成在这条边的
+      // 外侧，与它保持设定的间距（默认 0.16，与默认标注线一致），并随立方体尺寸变动。
+      const DIM_EDGE_OPTIONS = {
+        height: [
+          { label: "前左", edgeX: "left", edgeZ: "front" },
+          { label: "前右", edgeX: "right", edgeZ: "front" },
+          { label: "后左", edgeX: "left", edgeZ: "back" },
+          { label: "后右", edgeX: "right", edgeZ: "back" }
+        ],
+        width: [
+          { label: "顶前", edgeY: "top", edgeZ: "front" },
+          { label: "顶后", edgeY: "top", edgeZ: "back" },
+          { label: "底前", edgeY: "bottom", edgeZ: "front" },
+          { label: "底后", edgeY: "bottom", edgeZ: "back" }
+        ],
+        depth: [
+          { label: "顶左", edgeX: "left", edgeY: "top" },
+          { label: "顶右", edgeX: "right", edgeY: "top" },
+          { label: "底左", edgeX: "left", edgeY: "bottom" },
+          { label: "底右", edgeX: "right", edgeY: "bottom" }
+        ]
+      };
+      // 每个维度所吸附的边由哪两个方向决定：height→左右+前后，width→上下+前后，depth→左右+上下
+      const DIM_EDGE_KEYS = {
+        height: ["edgeX", "edgeZ"],
+        width: ["edgeY", "edgeZ"],
+        depth: ["edgeX", "edgeY"]
+      };
+
+      function normalizeDimLine(item) {
+        item.axis = item.axis === "height" ? "height" : item.axis === "depth" ? "depth" : "width";
+        normalizeDimAlign(item);
+        if (item.edgeX !== "left" && item.edgeX !== "right") item.edgeX = "left";
+        if (item.edgeY !== "top" && item.edgeY !== "bottom") item.edgeY = "top";
+        if (item.edgeZ !== "front" && item.edgeZ !== "back") item.edgeZ = "front";
+        return item;
+      }
+
+      function addCustomDimension() {
+        if (!Array.isArray(state.customDims)) state.customDims = [];
+        customDimSequence += 1;
+        const item = {
+          id: `dim-${Date.now().toString(36)}-${customDimSequence}`,
+          axis: "width",
+          align: "left",
+          edgeX: "left",
+          edgeY: "top",
+          edgeZ: "front",
+          length: Number((state.width).toFixed(2))
+        };
+        state.customDims.push(item);
+        renderCustomDimEditor();
+        rebuild();
+        scheduleWorkspaceSave();
+      }
+
+      function deleteCustomDimension(id) {
+        if (!Array.isArray(state.customDims)) return;
+        state.customDims = state.customDims.filter((item) => item.id !== id);
+        renderCustomDimEditor();
+        rebuild();
+        scheduleWorkspaceSave();
+      }
+
+      function buildDimSlider(labelText, min, max, value, onInput) {
+        const field = document.createElement("div");
+        field.className = "field";
+        const label = document.createElement("label");
+        label.textContent = labelText;
+        const range = document.createElement("input");
+        range.type = "range";
+        range.min = String(min);
+        range.max = String(max);
+        range.step = "0.02";
+        range.value = String(value);
+        const number = document.createElement("input");
+        number.type = "number";
+        number.min = String(min);
+        number.max = String(max);
+        number.step = "0.02";
+        number.value = String(value);
+        const apply = (raw) => {
+          const parsed = Number(raw);
+          if (Number.isNaN(parsed)) return;
+          range.value = String(parsed);
+          number.value = String(parsed);
+          onInput(parsed);
+        };
+        range.addEventListener("input", () => apply(range.value));
+        number.addEventListener("input", () => apply(number.value));
+        field.append(label, range, number);
+        return field;
+      }
+
+      function renderCustomDimEditor() {
+        const list = document.querySelector("#customDimList");
+        if (!list) return;
+        list.innerHTML = "";
+        if (!Array.isArray(state.customDims) || state.customDims.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "custom-dim-empty";
+          empty.textContent = "还没有自定义标注线，点击上方按钮添加。";
+          list.appendChild(empty);
+          return;
+        }
+        const axisLabels = { width: "宽", height: "高", depth: "深" };
+        state.customDims.forEach((item, index) => {
+          const card = document.createElement("div");
+          card.className = "custom-dim-card";
+
+          const head = document.createElement("div");
+          head.className = "custom-dim-card-head";
+          const title = document.createElement("span");
+          title.className = "custom-dim-title";
+          title.textContent = `标注线 ${index + 1}`;
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "custom-dim-delete";
+          del.textContent = "删除";
+          del.addEventListener("click", () => deleteCustomDimension(item.id));
+          head.append(title, del);
+          card.appendChild(head);
+
+          const axisRow = document.createElement("div");
+          axisRow.className = "custom-dim-axis";
+          ["width", "height", "depth"].forEach((axis) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = axisLabels[axis];
+            if (item.axis === axis) btn.classList.add("is-active");
+            btn.addEventListener("click", () => {
+              item.axis = axis;
+              normalizeDimAlign(item);
+              renderCustomDimEditor();
+              rebuild();
+              scheduleWorkspaceSave();
+            });
+            axisRow.appendChild(btn);
+          });
+          card.appendChild(axisRow);
+
+          normalizeDimLine(item);
+          const currentAxis = item.axis;
+          const alignRow = document.createElement("div");
+          alignRow.className = "custom-dim-axis";
+          DIM_ALIGN_OPTIONS[currentAxis].forEach((opt) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = opt.label;
+            if (item.align === opt.value) btn.classList.add("is-active");
+            btn.addEventListener("click", () => {
+              item.align = opt.value;
+              renderCustomDimEditor();
+              rebuild();
+              scheduleWorkspaceSave();
+            });
+            alignRow.appendChild(btn);
+          });
+          card.appendChild(alignRow);
+
+          card.appendChild(
+            buildDimSlider("长度", 0.2, 12, item.length, (val) => {
+              item.length = val;
+              rebuild();
+              scheduleWorkspaceSave();
+            })
+          );
+
+          // 吸附边：从该维度的 4 条平行边里选一条，标注线平行生成在其外侧
+          const edgeLabel = document.createElement("div");
+          edgeLabel.className = "custom-dim-sublabel";
+          edgeLabel.textContent = "吸附边";
+          card.appendChild(edgeLabel);
+
+          const edgeRow = document.createElement("div");
+          edgeRow.className = "custom-dim-axis custom-dim-edge";
+          const edgeKeys = DIM_EDGE_KEYS[currentAxis];
+          DIM_EDGE_OPTIONS[currentAxis].forEach((opt) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = opt.label;
+            const isActive = edgeKeys.every((key) => item[key] === opt[key]);
+            if (isActive) btn.classList.add("is-active");
+            btn.addEventListener("click", () => {
+              edgeKeys.forEach((key) => {
+                item[key] = opt[key];
+              });
+              renderCustomDimEditor();
+              rebuild();
+              scheduleWorkspaceSave();
+            });
+            edgeRow.appendChild(btn);
+          });
+          card.appendChild(edgeRow);
+
+          list.appendChild(card);
+        });
+      }
+
       let activeVariantIndex = 0;
       const variants = Array.from({ length: 5 }, () => null);
       let selectedTextId = null;
       let textItemSequence = 0;
+      let customDimSequence = 0;
       let persistenceReady = false;
       let persistenceTimer = null;
       const WORKSPACE_DB_NAME = "size-diagram-generator";
@@ -2200,6 +2499,90 @@
         group.add(mesh);
       }
 
+      // 自定义标注线：默认放置参考（体块中心 + 顶部），宽深高固定不受影响
+      function getBlockFrame() {
+        const w = state.width;
+        const h = state.height;
+        const d = state.depth;
+        const hasRecess = state.showRecess === "true";
+        if (state.layoutMode === "tabletop") {
+          const baseY = hasRecess ? state.gap : 0;
+          return { cx: 0, cy: baseY + h / 2, cz: 0, top: baseY + h };
+        }
+        const leftX = hasRecess ? -(state.gap / 2 + w / 2) : 0;
+        return { cx: leftX, cy: h / 2, cz: d / 2, top: h };
+      }
+
+      function getBlockBounds() {
+        const w = state.width;
+        const h = state.height;
+        const d = state.depth;
+        const hasRecess = state.showRecess === "true";
+        if (state.layoutMode === "tabletop") {
+          const baseY = hasRecess ? state.gap : 0;
+          return { xMin: -w / 2, xMax: w / 2, yMin: baseY, yMax: baseY + h, zMin: -d / 2, zMax: d / 2 };
+        }
+        const leftX = hasRecess ? -(state.gap / 2 + w / 2) : 0;
+        return { xMin: leftX - w / 2, xMax: leftX + w / 2, yMin: 0, yMax: h, zMin: 0, zMax: d };
+      }
+
+      // 把 state.customDims 里的每条线画成真实 3D 标注线（复用 addDimension，
+      // 因此自动继承尺寸帧/发布端样式、颜色、透视，并且导出时一并被截取）。
+      // 每条线一端"对齐"到立方体对应的面并随其变动（调长度时只有另一端移动）；
+      // 垂直位置"吸附"到所选的一条平行棱边，并沿单一方向偏移固定 0.16——
+      // 与内置宽/高/深标注线完全一致（高/深横向偏 x、宽纵向偏 y，另一维贴合所选面）。
+      function addCustomDimensions(group) {
+        if (!Array.isArray(state.customDims)) return;
+        const b = getBlockBounds();
+        const GAP = 0.16;
+        state.customDims.forEach((item) => {
+          const length = Number(item.length) || 0;
+          if (length <= 1e-6) return;
+          normalizeDimLine(item);
+          const axis = item.axis;
+          const align = item.align;
+          let start;
+          let end;
+          if (axis === "height") {
+            // 横向(x)偏移 0.16，贴合所选前/后面(z)，沿 y 方向延伸——同内置高度线
+            const x = item.edgeX === "right" ? b.xMax + GAP : b.xMin - GAP;
+            const z = item.edgeZ === "front" ? b.zMax + 0.03 : b.zMin - 0.03;
+            if (align === "top") {
+              end = v(x, b.yMax, z);
+              start = v(x, b.yMax - length, z);
+            } else {
+              start = v(x, b.yMin, z);
+              end = v(x, b.yMin + length, z);
+            }
+            addDimension(group, start, end, vectorX, 0.14);
+          } else if (axis === "depth") {
+            // 横向(x)偏移 0.16，贴合所选顶/底面(y)，沿 z 方向延伸——同内置深度线
+            const x = item.edgeX === "right" ? b.xMax + GAP : b.xMin - GAP;
+            const y = item.edgeY === "top" ? b.yMax : b.yMin;
+            if (align === "front") {
+              end = v(x, y, b.zMax);
+              start = v(x, y, b.zMax - length);
+            } else {
+              start = v(x, y, b.zMin);
+              end = v(x, y, b.zMin + length);
+            }
+            addDimension(group, start, end, vectorX, 0.14);
+          } else {
+            // 宽度：纵向(y)偏移 0.16，贴合所选前/后面(z)，沿 x 方向延伸——同内置宽度线
+            const y = item.edgeY === "top" ? b.yMax + GAP : b.yMin - GAP;
+            const z = item.edgeZ === "front" ? b.zMax + 0.02 : b.zMin - 0.02;
+            if (align === "right") {
+              end = v(b.xMax, y, z);
+              start = v(b.xMax - length, y, z);
+            } else {
+              start = v(b.xMin, y, z);
+              end = v(b.xMin + length, y, z);
+            }
+            addDimension(group, start, end, vectorY, 0.14);
+          }
+        });
+      }
+
       function addWallAndFloor(group, recessOpening) {
         const wallLines = [];
         const xMin = -16;
@@ -2315,21 +2698,27 @@
           addGroundOutline(group, x0, x1, z0, z1);
         }
 
+        // 相机转到体块左侧（相机 x 小于体块中心）时左侧面变为可见，
+        // 标注线随之对称翻转，与桌面放置模式的 sideSign 逻辑保持一致。
+        const leftFaceVisible = camera.position.x < centerX;
+
         const topViewDimensions =
           state.showRecess !== "true" &&
           (state.dimensionLayout === "top" || (state.dimensionLayout === "auto" && state.cameraPitch >= 8));
         if (topViewDimensions) {
-          const widthZ = z1 + 0.18;
-          const sideX = x1 + 0.14;
+          const widthZ = z1 + 0.16;
+          const sideX = leftFaceVisible ? x0 - 0.16 : x1 + 0.16;
           const heightX = sideX;
           const heightZ = z0 + 0.02;
           addDimension(group, v(x0, y0, widthZ), v(x1, y0, widthZ), vectorZ, 0.14);
           addDimension(group, v(sideX, y0, z1), v(sideX, y0, heightZ), vectorX, 0.14);
           addDimension(group, v(heightX, y0, heightZ), v(heightX, y1, heightZ), vectorX, 0.14);
         } else {
-          addDimension(group, v(x0 - 0.16, y0, z1 + 0.03), v(x0 - 0.16, y1, z1 + 0.03), vectorX, 0.14);
+          const heightX = leftFaceVisible ? x1 + 0.16 : x0 - 0.16;
+          const depthX = leftFaceVisible ? x0 - 0.16 : x1 + 0.16;
+          addDimension(group, v(heightX, y0, z1 + 0.03), v(heightX, y1, z1 + 0.03), vectorX, 0.14);
           addDimension(group, v(x0, y1 + 0.16, z1 + 0.02), v(x1, y1 + 0.16, z1 + 0.02), vectorY, 0.14);
-          addDimension(group, v(x1 + 0.16, y0, z0), v(x1 + 0.16, y0, z1), vectorX, 0.14);
+          addDimension(group, v(depthX, y0, z0), v(depthX, y0, z1), vectorX, 0.14);
         }
       }
 
@@ -2756,9 +3145,9 @@
         ];
         addSegments(group, edges, lineMaterials.recessStructure);
 
-        addDimension(group, v(x0, y1 + 0.16, zFront + 0.035), v(x1, y1 + 0.16, zFront + 0.035), vectorY, 0.14);
-        addDimension(group, v(x1 + 0.16, y0, zFront + 0.035), v(x1 + 0.16, y1, zFront + 0.035), vectorX, 0.14);
-        addDimension(group, v(x0 + 0.12, y0, zFront), v(x0 + 0.12, y0, zBack), vectorX, 0.14);
+        addDimension(group, v(x0, y1 + 0.16, zFront + 0.02), v(x1, y1 + 0.16, zFront + 0.02), vectorY, 0.14);
+        addDimension(group, v(x1 + 0.16, y0, zFront + 0.03), v(x1 + 0.16, y1, zFront + 0.03), vectorX, 0.14);
+        addDimension(group, v(x0 + 0.16, y0, zFront), v(x0 + 0.16, y0, zBack), vectorX, 0.14);
       }
 
       function addTabletopScene(group, dims) {
@@ -2786,7 +3175,7 @@
         const tableApronBottomY = hasRecess ? Math.min(-0.16, recessBottomY - 0.02) : -0.16;
         const recessDimensionY = 0.018;
         const recessLengthDimensionZ = rz1 + 0.16;
-        const recessWidthDimensionX = rx0 - 0.18;
+        const recessWidthDimensionX = rx0 - 0.16;
 
         addQuad(group, [v(tableX0, 0, tableBack), v(tableX1, 0, tableBack), v(tableX1, 2.8, tableBack), v(tableX0, 2.8, tableBack)], material(COLORS.backgroundPlane));
         if (hasRecess) {
@@ -2870,19 +3259,19 @@
           state.dimensionLayout === "top" || (state.dimensionLayout === "auto" && autoSideView);
         if (sideView) {
           const sideSign = state.cameraYaw >= 0 ? 1 : -1;
-          const sideX = sideSign > 0 ? x1 + 0.18 : x0 - 0.18;
+          const sideX = sideSign > 0 ? x1 + 0.16 : x0 - 0.16;
           const sideTick = sideSign > 0 ? vectorX : vectorX.clone().multiplyScalar(-1);
           const sideDimensionZ = z0 + 0.06;
           addDimension(group, v(x0, objectY0, z1 + 0.16), v(x1, objectY0, z1 + 0.16), vectorZ, 0.14);
           addDimension(group, v(sideX, objectY0, sideDimensionZ), v(sideX, objectY0, z1 + 0.06), sideTick, 0.14);
           addDimension(group, v(sideX, objectY0, sideDimensionZ), v(sideX, objectY1, sideDimensionZ), sideTick, 0.12);
         } else {
-          addDimension(group, v(x0, objectY1 + 0.16, z0 - d * 0.08), v(x1, objectY1 + 0.16, z0 - d * 0.08), vectorY, 0.14);
-          addDimension(group, v(x0 - 0.18, objectY1 + 0.025, z0), v(x0 - 0.18, objectY1 + 0.025, z1), vectorX, 0.14);
+          addDimension(group, v(x0, objectY1 + 0.16, z1 + 0.02), v(x1, objectY1 + 0.16, z1 + 0.02), vectorY, 0.14);
+          addDimension(group, v(x0 - 0.16, objectY1 + 0.025, z0), v(x0 - 0.16, objectY1 + 0.025, z1), vectorX, 0.14);
           addDimension(group, v(x1 + 0.16, objectY0, z1 + 0.025), v(x1 + 0.16, objectY1, z1 + 0.025), vectorX, 0.12);
         }
         if (hasRecess) {
-          const recessWidthDimensionSideX = sideView ? rx1 + 0.18 : recessWidthDimensionX;
+          const recessWidthDimensionSideX = sideView ? rx1 + 0.16 : recessWidthDimensionX;
           addDimension(group, v(rx0, recessDimensionY, recessLengthDimensionZ), v(rx1, recessDimensionY, recessLengthDimensionZ), vectorZ, 0.12);
           addDimension(group, v(recessWidthDimensionSideX, recessDimensionY, rz0), v(recessWidthDimensionSideX, recessDimensionY, rz1), vectorX, 0.12);
         }
@@ -2899,6 +3288,7 @@
         };
         if (state.layoutMode === "tabletop") {
           addTabletopScene(root, dims);
+          addCustomDimensions(root);
           render();
           return;
         }
@@ -2921,6 +3311,7 @@
         if (hasRecess) {
           addRightRecess(root, recessCenterX, recessDims);
         }
+        addCustomDimensions(root);
         render();
       }
 
@@ -3155,7 +3546,7 @@
         state[key] = nextValue;
         syncInputsForKey(key);
         updateCamera();
-        if ((state.layoutMode === "tabletop" && key === "cameraYaw") || (state.layoutMode === "wall" && key === "cameraPitch")) {
+        if ((state.layoutMode === "tabletop" && key === "cameraYaw") || (state.layoutMode === "wall" && (key === "cameraPitch" || key === "cameraYaw"))) {
           rebuild();
         } else {
           render();
@@ -3215,7 +3606,7 @@
         syncDimensionFieldOrder();
         const widthRange = {
           min: isTabletop ? "0.3" : "0.3",
-          max: isTabletop ? "10.4" : "10.4",
+          max: isTabletop ? "20.8" : "20.8",
           step: "0.01"
         };
         for (const input of [document.querySelector("#widthRange"), document.querySelector("#widthNumber")]) {
@@ -3225,7 +3616,7 @@
         }
         const heightRange = {
           min: isTabletop ? "0.08" : "0.3",
-          max: isTabletop ? "2.4" : "9.6",
+          max: isTabletop ? "4.8" : "19.2",
           step: isTabletop ? "0.01" : "0.01"
         };
         for (const input of [document.querySelector("#heightRange"), document.querySelector("#heightNumber")]) {
@@ -3235,7 +3626,7 @@
         }
         const depthRange = {
           min: isTabletop ? "0.3" : "0.45",
-          max: isTabletop ? "6.4" : "2.7",
+          max: isTabletop ? "12.8" : "5.4",
           step: "0.01"
         };
         for (const input of [document.querySelector("#depthRange"), document.querySelector("#depthNumber")]) {
@@ -3265,7 +3656,7 @@
         }
         const yawRange = {
           min: isTabletop ? "-90" : "-36",
-          max: isTabletop ? "90" : "36",
+          max: isTabletop ? "90" : "94",
           step: "0.1"
         };
         for (const input of [document.querySelector("#cameraYawRange"), document.querySelector("#cameraYawNumber")]) {
@@ -3622,6 +4013,7 @@
         resize();
         rebuild();
         syncTable();
+        renderCustomDimEditor();
         renderVariantDock();
       }
 
@@ -3978,7 +4370,7 @@
               renderVariantDock();
             } else if (key === "cameraDistance" || key === "cameraFov" || key === "cameraYaw" || key === "cameraPitch" || key === "cameraPanX" || key === "cameraPanY") {
               updateCamera();
-              if ((state.layoutMode === "tabletop" && key === "cameraYaw") || (state.layoutMode === "wall" && key === "cameraPitch")) {
+              if ((state.layoutMode === "tabletop" && key === "cameraYaw") || (state.layoutMode === "wall" && (key === "cameraPitch" || key === "cameraYaw"))) {
                 rebuild();
               } else {
                 render();
@@ -3993,6 +4385,11 @@
         bindStickerControls();
         bindTextControls();
         bindTableControls();
+
+        const addCustomDimButton = document.querySelector("#addCustomDim");
+        if (addCustomDimButton) {
+          addCustomDimButton.addEventListener("click", () => addCustomDimension());
+        }
 
         document.querySelector("#togglePanel").addEventListener("click", () => {
           document.querySelector("#panel").classList.toggle("collapsed");
@@ -4076,6 +4473,8 @@
         };
         sheet.addEventListener("pointerdown", (event) => {
           if (event.target === stickerOverlay || event.target.closest(".text-overlay")) return;
+          const editingOverlay = textOverlayLayer.querySelector(".text-overlay.is-editing");
+          if (editingOverlay) finishTextEditing(editingOverlay);
           if (event.button !== 0 && event.button !== 1) return;
           event.preventDefault();
           dragState.active = true;
@@ -4358,6 +4757,7 @@
         resize();
         rebuild();
         syncTable();
+        renderCustomDimEditor();
         persistenceReady = true;
         scheduleWorkspaceSave();
 
